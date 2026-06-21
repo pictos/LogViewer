@@ -1,4 +1,7 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿[assembly: XmlnsDefinition("http://schemas.microsoft.com/dotnet/maui/global", "LogViewer")]
+[assembly: XmlnsDefinition("http://schemas.microsoft.com/dotnet/maui/global", "LogViewer.ViewModels")]
+[assembly: XmlnsDefinition("http://schemas.microsoft.com/dotnet/maui/global", "LogViewer.Models")]
+[assembly: XmlnsDefinition("http://schemas.microsoft.com/dotnet/maui/global", "LogViewer.Pages")]
 
 namespace LogViewer;
 

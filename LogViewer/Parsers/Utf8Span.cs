@@ -3,6 +3,8 @@ using System.Runtime.CompilerServices;
 
 namespace LogViewer.Parsers;
 
+// based on https://github.com/buybackoff/1brc
+
 [SkipLocalsInit]
 public unsafe struct Utf8Span : IEquatable<Utf8Span>
 {

@@ -1,16 +1,18 @@
 ﻿
 using Microsoft.Win32.SafeHandles;
-using System.Buffers;
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.IO.MemoryMappedFiles;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Text.Unicode;
+
 
 namespace LogViewer.Parsers;
 
-public unsafe class SuperFastParser : IDisposable
+// based on https://github.com/buybackoff/1brc
+
+public unsafe sealed partial class LoggerReader : IDisposable
 {
 	readonly FileStream stream;
 	readonly MemoryMappedFile mmf;
@@ -20,6 +22,7 @@ public unsafe class SuperFastParser : IDisposable
 	readonly long fileLength;
 
 	readonly int initialChunkCount;
+	readonly int finalListSize;
 	const int MaxChunkSize = int.MaxValue - 100_000;
 
 	public string FilePath { get; }
@@ -27,9 +30,9 @@ public unsafe class SuperFastParser : IDisposable
 	static double[] powersOf10 = new double[64];
 	static GCHandle powersHandle;
 	readonly double* powersPtr = Init10Powers();
-	ImmutableArray<LogLine2>? lines;
+	ImmutableArray<string>? lines;
 
-	public SuperFastParser(string filePath, int? chunckCount = null)
+	public LoggerReader(string filePath, int? chunckCount = null)
 	{
 		ArgumentException.ThrowIfNullOrEmpty(filePath);
 		initialChunkCount = Math.Max(1, chunckCount ?? Environment.ProcessorCount);
@@ -43,7 +46,7 @@ public unsafe class SuperFastParser : IDisposable
 		va = mmf.CreateViewAccessor(0, fileLength, MemoryMappedFileAccess.Read);
 		vaHandle = va.SafeMemoryMappedViewHandle;
 		vaHandle.AcquirePointer(ref ptr);
-
+		finalListSize = (int)(stream.Length / 186);
 		pointer = ptr;
 	}
 
@@ -81,100 +84,92 @@ public unsafe class SuperFastParser : IDisposable
 		return chunks;
 	}
 
-	public List<LogLine2> ProcessChunk(long start, int length)
+	public List<string> ProcessChunkFilter(long start, int length, ReadOnlySpan<char> query)
 	{
 		var remaining = new Utf8Span(pointer + start, length);
 
-		var result = new List<LogLine2>(512);
+		int maxByteCount = Encoding.UTF8.GetMaxByteCount(query.Length);
 
-		while (remaining.Length > 0)
-		{
-			var idx = remaining.Span.IndexOf(newLine);
-			var value = remaining.SliceUnsafe(0, idx);
-			var log = new LogLine2(Encoding.UTF8.GetString(value.Span));
-			result.Add(log);
-			remaining = remaining.SliceUnsafe(idx + 1);
-		}
+		Span<byte> utf8TargetBuffer = maxByteCount <= 1024
+			? stackalloc byte[maxByteCount]
+			: new byte[maxByteCount];
 
-		return result;
-	}
+		int actualBytesWritten = Encoding.UTF8.GetBytes(query, utf8TargetBuffer);
+		ReadOnlySpan<byte> utf8Target = utf8TargetBuffer[..actualBytesWritten];
 
-	public List<LogLine2> ProcessChunkFilter(long start, int length, ReadOnlySpan<char> query)
-	{
-		var remaining = new Utf8Span(pointer + start, length);
-		var result = new List<LogLine2>(1024);
+		var result = new List<string>(128);
 
-		Span<char> lineCharBuffer = stackalloc char[1024];
-		char[]? lineArray = null;
 		while (remaining.Length > 0)
 		{
 			var idx = remaining.Span.IndexOf(newLine);
 			var lineLength = idx >= 0 ? idx : remaining.Length;
 			var value = remaining.SliceUnsafe(0, lineLength);
+			var span = value.Span;
 
-			Span<char> decodedLine = lineCharBuffer;
-			int maxCharsNeeded = Encoding.UTF8.GetMaxCharCount(value.Length);
-
-			if (maxCharsNeeded > lineCharBuffer.Length)
+			if (span.IndexOf(utf8Target) >= 0)
 			{
-				if (lineArray is not null)
-				{
-					ArrayPool<char>.Shared.Return(lineArray);
-				}
-				lineArray = ArrayPool<char>.Shared.Rent(maxCharsNeeded);
-				decodedLine = lineArray;
-			}
-
-			int charsWritten = Encoding.UTF8.GetChars(value.Span, decodedLine);
-			ReadOnlySpan<char> lineAsChars = decodedLine[..charsWritten];
-
-			if (lineAsChars.Contains(query, StringComparison.OrdinalIgnoreCase))
-			{
-				var text = new string(lineAsChars);
-				var log = new LogLine2(text);
+				var log = Encoding.UTF8.GetString(span);
 				result.Add(log);
 			}
 
-			if (idx < 0) break;
-			remaining = remaining.SliceUnsafe(idx + 1);
-		}
-
-		if (lineArray is not null)
-		{
-			ArrayPool<char>.Shared.Return(lineArray);
+			int advance = idx >= 0 ? idx + 1 : remaining.Length;
+			remaining = remaining.SliceUnsafe(advance);
 		}
 
 		return result;
 	}
 
-	public ImmutableArray<LogLine2> Filter(string query)
+	public ImmutableArray<string> Filter(string query)
 	{
 		return SplitIntoMemoryChunks()
-		.AsParallel()
-		.AsOrdered()
-		.Select(tuple => ProcessChunkFilter(tuple.start, tuple.end, query))
-		.Aggregate((result, chunk) =>
-		{
-			result.AddRange(chunk);
-			return result;
-		})
-		.ToImmutableArray();
+			.AsParallel()
+			.AsOrdered()
+			.Select(tuple => ProcessChunkFilter(tuple.start, tuple.end, query))
+			.Aggregate(
+				() => new List<string>(256),
+				(result, chunkMatches) => { result.AddRange(chunkMatches); return result; },
+				(finalResult, localResult) => { finalResult.AddRange(localResult); return finalResult; },
+				finalResult => finalResult.ToImmutableArray());
 	}
 
-	public ImmutableArray<LogLine2> Process()
+
+	[MemberNotNull(nameof(lines))]
+	public ImmutableArray<string> Process()
 	{
 		lines ??= SplitIntoMemoryChunks()
-		.AsParallel()
-		.AsOrdered()
-		.Select(tuple => ProcessChunk(tuple.start, tuple.end))
-		.ToList()
-		.Aggregate((result, chunk) =>
-		{
-			result.AddRange(chunk);
-			return result;
-		}).ToImmutableArray();
+			.AsParallel()
+			.AsOrdered()
+			.Select(tuple => ProcessChunk(tuple.start, tuple.end))
+			.Aggregate(
+				() => new List<string>(finalListSize),
+				(result, chunk) => { result.AddRange(chunk); return result; },
+				(finalResult, localResult) => { finalResult.AddRange(localResult); return finalResult; },
+				finalResult => finalResult.ToImmutableArray()
+			);
 
 		return lines.Value;
+	}
+
+	public List<string> ProcessChunk(long start, int length)
+	{
+		var remaining = new Utf8Span(pointer + start, length);
+
+		var result = new List<string>(512);
+
+		while (remaining.Length > 0)
+		{
+			var idx = remaining.Span.IndexOf(newLine);
+
+			int lineLength = idx >= 0 ? idx : remaining.Length;
+
+			var value = remaining.SliceUnsafe(0, lineLength);
+			result.Add(Encoding.UTF8.GetString(value.Span));
+
+			int advance = idx >= 0 ? idx + 1 : remaining.Length;
+			remaining = remaining.SliceUnsafe(advance);
+		}
+
+		return result;
 	}
 
 	const byte newLine = (byte)'\n';
@@ -202,13 +197,13 @@ public unsafe class SuperFastParser : IDisposable
 		return idx;
 	}
 
-
 	public void Dispose()
 	{
 		vaHandle.Dispose();
 		va.Dispose();
 		mmf.Dispose();
 		stream.Dispose();
+		GC.SuppressFinalize(this);
 	}
 
 	static double* Init10Powers()
@@ -222,5 +217,3 @@ public unsafe class SuperFastParser : IDisposable
 		return (double*)powersHandle.AddrOfPinnedObject();
 	}
 }
-
-

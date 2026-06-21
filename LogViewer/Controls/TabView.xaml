@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Border
+	x:Class="LogViewer.Controls.TabView"
+	xmlns="http://schemas.microsoft.com/dotnet/maui/global"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	Padding="10"
+	x:DataType="LogViewModel"
+	Background="Black"
+	StrokeShape="{RoundRectangle CornerRadius='10,10,0,0'}">
+	<HorizontalStackLayout Spacing="8">
+		<Label
+			LineBreakMode="TailTruncation"
+			Text="{Binding FileName}"
+			TextColor="White"
+			VerticalTextAlignment="Center" />
+		<Label
+			FontAttributes="Bold"
+			FontSize="16"
+			Text="X"
+			VerticalTextAlignment="Center">
+			<Label.GestureRecognizers>
+				<TapGestureRecognizer Command="{Binding CloseCommand}" />
+			</Label.GestureRecognizers>
+		</Label>
+	</HorizontalStackLayout>
+</Border>
