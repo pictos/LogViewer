@@ -12,6 +12,7 @@
 	<Shell.MenuBarItems>
 		<MenuBarItem Text="File">
 			<MenuFlyoutItem Command="{Binding OpenFileCommand}" Text="Open..." />
+			<MenuFlyoutItem Command="{Binding OpenSideBySideCommand}" Text="Open side by side..." />
 		</MenuBarItem>
 	</Shell.MenuBarItems>
 

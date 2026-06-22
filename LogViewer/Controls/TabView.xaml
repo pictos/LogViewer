@@ -7,6 +7,11 @@
 	Background="Black"
 	StrokeShape="{RoundRectangle CornerRadius='10,10,0,0'}"
 	TranslationY="1">
+
+	<Border.GestureRecognizers>
+		<TapGestureRecognizer Tapped="TapGestureRecognizer_Tapped" />
+	</Border.GestureRecognizers>
+
 	<Grid ColumnDefinitions="*, 30" ColumnSpacing="8">
 		<Label
 			Padding="10"
@@ -14,6 +19,7 @@
 			Text="{Binding FileName}"
 			TextColor="White"
 			VerticalTextAlignment="Center" />
+
 		<Grid Grid.Column="1" Background="Chocolate">
 			<Label
 				Padding="5"
@@ -26,6 +32,5 @@
 				<TapGestureRecognizer Command="{Binding CloseCommand}" />
 			</Grid.GestureRecognizers>
 		</Grid>
-
 	</Grid>
 </Border>

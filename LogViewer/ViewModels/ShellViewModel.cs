@@ -5,12 +5,8 @@ namespace LogViewer.ViewModels;
 
 sealed partial class ShellViewModel : BaseViewModel
 {
-	PickOptions? options;
-
-	[RelayCommand]
-	public async Task OpenFile()
-	{
-		var customFileType = new FilePickerFileType
+	readonly PickOptions options;
+	readonly FilePickerFileType customFileType = new 
 			(
 				new Dictionary<DevicePlatform, IEnumerable<string>>
 				{
@@ -18,13 +14,18 @@ sealed partial class ShellViewModel : BaseViewModel
 				}
 			);
 
-		options ??= new PickOptions()
+	public ShellViewModel()
+	{
+		options = new PickOptions()
 		{
 			PickerTitle = "Pick your log",
 			FileTypes = customFileType
-
 		};
+	}
 
+	[RelayCommand]
+	async Task OpenFile()
+	{
 		var result = await FilePicker.Default.PickAsync(options);
 
 		if (result is null)
@@ -33,5 +34,18 @@ sealed partial class ShellViewModel : BaseViewModel
 		}
 
 		FileManager.OpenFile(result);
+	}
+
+	[RelayCommand]
+	async Task OpenSideBySide()
+	{
+		var result = await FilePicker.Default.PickAsync(options);
+
+		if (result is null)
+		{
+			return;
+		}
+
+		FileManager.OpenFileInSide(result);
 	}
 }

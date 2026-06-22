@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<nalu:VirtualScroll
+	x:Class="LogViewer.Controls.LogContent"
+	xmlns="http://schemas.microsoft.com/dotnet/maui/global"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	xmlns:nalu="clr-namespace:Nalu;assembly=Nalu.Maui.VirtualScroll"
+	x:DataType="LogViewModel"
+	ItemsSource="{Binding LogSource}">
+	<nalu:VirtualScroll.ItemTemplate>
+		<DataTemplate x:DataType="x:String">
+			<Editor
+				Margin="10,0"
+				IsReadOnly="True"
+				Text="{Binding .}"
+				VerticalTextAlignment="Center" />
+		</DataTemplate>
+	</nalu:VirtualScroll.ItemTemplate>
+</nalu:VirtualScroll>

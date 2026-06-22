@@ -7,30 +7,24 @@
 	xmlns:nalu="clr-namespace:Nalu;assembly=Nalu.Maui.VirtualScroll"
 	x:Name="this"
 	x:DataType="LogViewModel"
-	RowDefinitions="*, 22">
-	<DockLayout>
-		<Entry
-			DockLayout.DockPosition="Top"
-			Placeholder="Filter"
-			Text="{Binding Query}">
-			<Entry.Behaviors>
-				<UserStoppedTypingBehavior Command="{Binding BindingContext.FilterCommand, Source={x:Reference this}}" StoppedTypingTimeThreshold="100" />
-			</Entry.Behaviors>
-		</Entry>
-		<nalu:VirtualScroll DockLayout.DockPosition="None" ItemsSource="{Binding LogSource}">
-			<nalu:VirtualScroll.ItemTemplate>
-				<DataTemplate x:DataType="x:String">
-					<Editor
-						Margin="10,0"
-						IsReadOnly="True"
-						Text="{Binding .}"
-						VerticalTextAlignment="Center" />
-				</DataTemplate>
-			</nalu:VirtualScroll.ItemTemplate>
-		</nalu:VirtualScroll>
+	RowDefinitions="auto, *, 22">
+
+	<Entry
+		DockLayout.DockPosition="Top"
+		Placeholder="Filter"
+		Text="{Binding Query}">
+		<Entry.Behaviors>
+			<UserStoppedTypingBehavior Command="{Binding BindingContext.FilterCommand, Source={x:Reference this}}" StoppedTypingTimeThreshold="100" />
+		</Entry.Behaviors>
+	</Entry>
+	<DockLayout
+		x:Name="dock"
+		Grid.Row="1"
+		x:FieldModifier="internal">
+		<LogContent DockLayout.DockPosition="None" />
 	</DockLayout>
 	<Label
-		Grid.Row="1"
+		Grid.Row="2"
 		Background="LightGray"
 		Text="{Binding Status}"
 		TextColor="Black" />

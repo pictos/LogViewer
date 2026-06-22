@@ -34,10 +34,9 @@ static class FileManager
 		}
 
 		var view = page.mainLayout.First(x => ((View)x).BindingContext == vm);
-		var tab = page.tabsLayout.First(x => ((View)x).BindingContext == vm);
+		var tab = page.tabsLayout.Cast<TabView>().First(x => x.BindingContext == vm);
 
-		page.mainLayout.Remove(view);
-		page.tabsLayout.Remove(tab);
+		page.RemoveLogView(tab);
 	}
 
 	static void AddNewFileOnPage(FileResult result, LoggerReader reader)
@@ -48,20 +47,48 @@ static class FileManager
 		}
 
 		var vm = new LogViewModel(reader) { FileName = result.FileName };
-		var tab = new TabView
-		{
-			BindingContext = vm
-		};
 
 		var view = new LogView
 		{
 			BindingContext = vm
 		};
 
-		page.tabsLayout.Add(tab);
+		var tab = new TabView
+		{
+			BindingContext = vm,
+			LogView = view
+		};
 
-		Grid.SetRow(view, 1);
+		page.HideAllTabs();
 
-		page.mainLayout.Add(view);
+		page.AddTabView(tab);
+		page.AddLogView(view);
+	}
+
+	public static void OpenFileInSide(FileResult result)
+	{
+		var reader = new LoggerReader(result.FullPath);
+		AddNewFileSideBySide(result, reader);
+	}
+
+	static void AddNewFileSideBySide(FileResult result, LoggerReader reader)
+	{
+		if (CurrentPage is not LogPage page)
+		{
+			return;
+		}
+
+		var vm = new LogViewModel(reader) { FileName = result.FileName };
+		var logView = new LogView
+		{
+			BindingContext = vm
+		};
+		var tab = new TabView
+		{
+			BindingContext = vm,
+			LogView = logView
+		};
+
+		page.OpenLogInSide(tab);
 	}
 }
