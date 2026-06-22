@@ -8,21 +8,20 @@
 	<Grid
 		x:Name="mainLayout"
 		x:FieldModifier="internal"
-		RowDefinitions="auto, *, 22">
+		RowDefinitions="auto, *">
 
 		<FlexLayout
 			x:Name="tabsLayout"
-			Padding="10"
+			Padding="5,0"
 			x:FieldModifier="internal"
 			FlexLayout.Shrink="0.25"
 			Wrap="NoWrap" />
 
 		<!--  LoggerContent will be added programatically  -->
 
-
-		<Label
+		<!--<Label
 			Grid.Row="2"
 			Background="LightGray"
-			Text="{Binding Status}" />
+			Text="{Binding Status}" />-->
 	</Grid>
 </ContentPage>

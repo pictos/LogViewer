@@ -86,15 +86,17 @@ public unsafe sealed partial class LoggerReader : IDisposable
 
 	public List<string> ProcessChunkFilter(long start, int length, ReadOnlySpan<char> query)
 	{
+		Span<char> lowerquery = stackalloc char[query.Length];
+		query.ToLowerInvariant(lowerquery);
 		var remaining = new Utf8Span(pointer + start, length);
 
-		int maxByteCount = Encoding.UTF8.GetMaxByteCount(query.Length);
+		int maxByteCount = Encoding.UTF8.GetMaxByteCount(lowerquery.Length);
 
 		Span<byte> utf8TargetBuffer = maxByteCount <= 1024
 			? stackalloc byte[maxByteCount]
 			: new byte[maxByteCount];
 
-		int actualBytesWritten = Encoding.UTF8.GetBytes(query, utf8TargetBuffer);
+		int actualBytesWritten = Encoding.UTF8.GetBytes(lowerquery, utf8TargetBuffer);
 		ReadOnlySpan<byte> utf8Target = utf8TargetBuffer[..actualBytesWritten];
 
 		var result = new List<string>(128);

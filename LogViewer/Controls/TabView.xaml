@@ -3,24 +3,29 @@
 	x:Class="LogViewer.Controls.TabView"
 	xmlns="http://schemas.microsoft.com/dotnet/maui/global"
 	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-	Padding="10"
 	x:DataType="LogViewModel"
 	Background="Black"
-	StrokeShape="{RoundRectangle CornerRadius='10,10,0,0'}">
-	<HorizontalStackLayout Spacing="8">
+	StrokeShape="{RoundRectangle CornerRadius='10,10,0,0'}"
+	TranslationY="1">
+	<Grid ColumnDefinitions="*, 30" ColumnSpacing="8">
 		<Label
+			Padding="10"
 			LineBreakMode="TailTruncation"
 			Text="{Binding FileName}"
 			TextColor="White"
 			VerticalTextAlignment="Center" />
-		<Label
-			FontAttributes="Bold"
-			FontSize="16"
-			Text="X"
-			VerticalTextAlignment="Center">
-			<Label.GestureRecognizers>
+		<Grid Grid.Column="1" Background="Chocolate">
+			<Label
+				Padding="5"
+				FontAttributes="Bold"
+				FontSize="16"
+				HorizontalTextAlignment="Center"
+				Text="X"
+				VerticalTextAlignment="Center" />
+			<Grid.GestureRecognizers>
 				<TapGestureRecognizer Command="{Binding CloseCommand}" />
-			</Label.GestureRecognizers>
-		</Label>
-	</HorizontalStackLayout>
+			</Grid.GestureRecognizers>
+		</Grid>
+
+	</Grid>
 </Border>

@@ -7,16 +7,37 @@ namespace LogViewer.Managers;
 
 static class FileManager
 {
-	static readonly Dictionary<FileResult, LoggerReader> readers = [];
+	//static readonly Dictionary<FileResult, LoggerReader> readers = [];
 
 	static ContentPage CurrentPage => (ContentPage)Shell.Current.CurrentPage;
 
 	public static void OpenFile(FileResult fileResult)
 	{
 		Debug.Assert(fileResult is not null);
+
 		var reader = new LoggerReader(fileResult.FullPath);
-		readers.TryAdd(fileResult, reader);
+		//readers.TryAdd(fileResult, reader);
 		AddNewFileOnPage(fileResult, reader);
+	}
+
+	public static void CloseFile(LogViewModel vm, LoggerReader reader)
+	{
+		RemoveLogView(vm);
+		reader.Dispose();
+	}
+
+	static void RemoveLogView(LogViewModel vm)
+	{
+		if (CurrentPage is not LogPage page)
+		{
+			return;
+		}
+
+		var view = page.mainLayout.First(x => ((View)x).BindingContext == vm);
+		var tab = page.tabsLayout.First(x => ((View)x).BindingContext == vm);
+
+		page.mainLayout.Remove(view);
+		page.tabsLayout.Remove(tab);
 	}
 
 	static void AddNewFileOnPage(FileResult result, LoggerReader reader)
