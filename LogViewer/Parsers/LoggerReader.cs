@@ -11,7 +11,6 @@ using System.Text;
 namespace LogViewer.Parsers;
 
 // based on https://github.com/buybackoff/1brc
-
 public unsafe sealed partial class LoggerReader : IDisposable
 {
 	readonly FileStream stream;
@@ -178,10 +177,6 @@ public unsafe sealed partial class LoggerReader : IDisposable
 	const byte carriageReturn = (byte)'\r';
 	const byte semiCollon = (byte)';';
 
-	// ASCII case-insensitive search over UTF-8 bytes. The needle is expected to be
-	// already lower-cased (see ProcessChunkFilter). We use the vectorized IndexOfAny to
-	// jump straight to candidate positions, then verify with case-folded byte comparison,
-	// so the common (no-match) path stays as fast as the original case-sensitive search.
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	static byte ToLowerAscii(byte b) => (uint)(b - (byte)'A') <= (byte)'Z' - (byte)'A' ? (byte)(b | 0x20) : b;
 
@@ -220,7 +215,8 @@ public unsafe sealed partial class LoggerReader : IDisposable
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	static bool MatchesIgnoreCaseAscii(ReadOnlySpan<byte> candidate, ReadOnlySpan<byte> lowerNeedle)
 	{
-		for (var j = 0; j < lowerNeedle.Length; j++)
+		var size = lowerNeedle.Length;
+		for (var j = 0; j < size; j++)
 		{
 			if (ToLowerAscii(candidate[j]) != lowerNeedle[j])
 				return false;
