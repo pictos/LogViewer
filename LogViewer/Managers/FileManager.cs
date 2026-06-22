@@ -26,13 +26,21 @@ static class FileManager
 			return;
 		}
 
-		var vm = new LogViewModel { FileName = result.FileName };
+		var vm = new LogViewModel(reader) { FileName = result.FileName };
 		var tab = new TabView
 		{
 			BindingContext = vm
 		};
 
+		var view = new LogView
+		{
+			BindingContext = vm
+		};
 
 		page.tabsLayout.Add(tab);
+
+		Grid.SetRow(view, 1);
+
+		page.mainLayout.Add(view);
 	}
 }
