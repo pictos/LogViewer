@@ -1,5 +1,4 @@
-﻿
-using LogViewer.Parsers;
+﻿using LogViewer.Parsers;
 using LogViewer.ViewModels;
 using System.Diagnostics;
 
@@ -7,6 +6,7 @@ namespace LogViewer.Managers;
 
 static class FileManager
 {
+	// TODO: see if there's a need for a HashSet to store the views, it would be faster than lookup into the layout's Children list
 	//static readonly Dictionary<FileResult, LoggerReader> readers = [];
 
 	static ContentPage CurrentPage => (ContentPage)Shell.Current.CurrentPage;
