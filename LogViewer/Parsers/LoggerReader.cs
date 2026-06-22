@@ -108,7 +108,7 @@ public unsafe sealed partial class LoggerReader : IDisposable
 			var value = remaining.SliceUnsafe(0, lineLength);
 			var span = value.Span;
 
-			if (span.IndexOf(utf8Target) >= 0)
+			if (IndexOfIgnoreCaseAscii(span, utf8Target) >= 0)
 			{
 				var log = Encoding.UTF8.GetString(span);
 				result.Add(log);
@@ -177,6 +177,57 @@ public unsafe sealed partial class LoggerReader : IDisposable
 	const byte newLine = (byte)'\n';
 	const byte carriageReturn = (byte)'\r';
 	const byte semiCollon = (byte)';';
+
+	// ASCII case-insensitive search over UTF-8 bytes. The needle is expected to be
+	// already lower-cased (see ProcessChunkFilter). We use the vectorized IndexOfAny to
+	// jump straight to candidate positions, then verify with case-folded byte comparison,
+	// so the common (no-match) path stays as fast as the original case-sensitive search.
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	static byte ToLowerAscii(byte b) => (uint)(b - (byte)'A') <= (byte)'Z' - (byte)'A' ? (byte)(b | 0x20) : b;
+
+	internal static int IndexOfIgnoreCaseAscii(ReadOnlySpan<byte> haystack, ReadOnlySpan<byte> lowerNeedle)
+	{
+		if (lowerNeedle.IsEmpty)
+			return 0;
+
+		byte firstLower = lowerNeedle[0];
+		byte firstUpper = (uint)(firstLower - (byte)'a') <= (byte)'z' - (byte)'a'
+			? (byte)(firstLower & ~0x20)
+			: firstLower;
+
+		var offset = 0;
+		while (true)
+		{
+			var slice = haystack.Slice(offset);
+			var i = firstLower == firstUpper
+				? slice.IndexOf(firstLower)
+				: slice.IndexOfAny(firstLower, firstUpper);
+
+			if (i < 0)
+				return -1;
+
+			var pos = offset + i;
+			if (pos + lowerNeedle.Length > haystack.Length)
+				return -1;
+
+			if (MatchesIgnoreCaseAscii(haystack.Slice(pos, lowerNeedle.Length), lowerNeedle))
+				return pos;
+
+			offset = pos + 1;
+		}
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	static bool MatchesIgnoreCaseAscii(ReadOnlySpan<byte> candidate, ReadOnlySpan<byte> lowerNeedle)
+	{
+		for (var j = 0; j < lowerNeedle.Length; j++)
+		{
+			if (ToLowerAscii(candidate[j]) != lowerNeedle[j])
+				return false;
+		}
+
+		return true;
+	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	internal static int IndexOfNewLineChar(ReadOnlySpan<byte> span, out int stride)
