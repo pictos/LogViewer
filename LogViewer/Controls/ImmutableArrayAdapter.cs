@@ -27,7 +27,7 @@ sealed class ImmutableArrayAdapter<T> : IVirtualScrollAdapter
 
 	public IDisposable Subscribe(Action<VirtualScrollChangeSet> changeCallback) => D.Empty;
 
-	sealed class D : IDisposable
+	sealed partial class D : IDisposable
 	{
 		public static D Empty { get; } = new();
 
