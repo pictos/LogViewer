@@ -7,11 +7,11 @@
 	x:DataType="LogViewModel"
 	ItemsSource="{Binding LogSource}">
 	<nalu:VirtualScroll.ItemTemplate>
-		<DataTemplate x:DataType="x:String">
+		<DataTemplate x:DataType="LogInfo">
 			<Editor
 				Margin="10,0"
 				IsReadOnly="True"
-				Text="{Binding .}"
+				Text="{Binding Text}"
 				VerticalTextAlignment="Center" />
 		</DataTemplate>
 	</nalu:VirtualScroll.ItemTemplate>

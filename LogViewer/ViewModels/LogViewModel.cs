@@ -35,7 +35,7 @@ sealed partial class LogViewModel : BaseViewModel
 		await Task.CompletedTask.ConfigureAwait(ConfigureAwaitOptions.ForceYielding);
 		var result = reader.Process();
 		await UIThreadManager.SwitchToMainThreadAsync();
-		fullText = LogSource = new ImmutableArrayAdapter<string>(result);
+		fullText = LogSource = new ImmutableArrayAdapter<LogInfo>(result);
 		Status = $"Loaded log with {result.Length} lines.";
 	}
 
@@ -52,7 +52,7 @@ sealed partial class LogViewModel : BaseViewModel
 		}
 
 		var result = reader.Filter(q);
-		LogSource = new ImmutableArrayAdapter<string>(result);
+		LogSource = new ImmutableArrayAdapter<LogInfo>(result);
 		Status = $"Filter applied, found {result.Length} lines.";
 	}
 

@@ -1,5 +1,4 @@
-﻿
-using Microsoft.Win32.SafeHandles;
+﻿using Microsoft.Win32.SafeHandles;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.IO.MemoryMappedFiles;
@@ -11,45 +10,50 @@ using System.Text;
 namespace LogViewer.Parsers;
 
 // based on https://github.com/buybackoff/1brc
+[SkipLocalsInit]
 public unsafe sealed partial class LoggerReader : IDisposable
 {
-	readonly FileStream stream;
+	const byte newLine = (byte)'\n';
+	const byte carriageReturn = (byte)'\r';
+	const byte semiCollon = (byte)';';
+
 	readonly MemoryMappedFile mmf;
 	readonly MemoryMappedViewAccessor va;
 	readonly SafeMemoryMappedViewHandle vaHandle;
 	readonly byte* pointer;
 	readonly long fileLength;
 
+	const byte LF = (byte)'\n';
+	const byte CR = (byte)'\r';
+
 	readonly int initialChunkCount;
-	readonly int finalListSize;
 	const int MaxChunkSize = int.MaxValue - 100_000;
 
 	public string FilePath { get; }
 
-	static double[] powersOf10 = new double[64];
-	static GCHandle powersHandle;
-	readonly double* powersPtr = Init10Powers();
-	ImmutableArray<string>? lines;
+	ImmutableArray<LogInfo>? lines;
 
-	public LoggerReader(string filePath, int? chunckCount = null)
+	public LoggerReader(string filePath, int? chunkCount = null)
 	{
 		ArgumentException.ThrowIfNullOrEmpty(filePath);
-		initialChunkCount = Math.Max(1, chunckCount ?? Environment.ProcessorCount);
+		initialChunkCount = Math.Max(1, chunkCount ?? Environment.ProcessorCount);
 		FilePath = filePath;
 
-		stream = new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, 1, FileOptions.SequentialScan);
-		fileLength = stream.Length;
+		fileLength = new FileInfo(filePath).Length;
 		mmf = MemoryMappedFile.CreateFromFile(filePath, FileMode.Open);
 
 		byte* ptr = (byte*)0;
 		va = mmf.CreateViewAccessor(0, fileLength, MemoryMappedFileAccess.Read);
 		vaHandle = va.SafeMemoryMappedViewHandle;
 		vaHandle.AcquirePointer(ref ptr);
-		finalListSize = (int)(stream.Length / 186);
 		pointer = ptr;
 	}
 
-	public List<(long start, int end)> SplitIntoMemoryChunks()
+	/// <summary>
+	/// Splits the file into roughly equal chunks, each ending on a line boundary, so chunks can be
+	/// parsed/searched in parallel without splitting a line across two chunks.
+	/// </summary>
+	public List<(long start, int length)> SplitIntoMemoryChunks()
 	{
 		var chunkCount = initialChunkCount;
 		var chunkSize = fileLength / chunkCount;
@@ -76,117 +80,178 @@ public unsafe sealed partial class LoggerReader : IDisposable
 			var idx = IndexOfNewLineChar(sp, out var stride);
 			newPos += idx + stride;
 			var len = newPos - pos;
-			chunks.Add((pos, (int)(len)));
+			chunks.Add((pos, (int)len));
 			pos = newPos;
 		}
 
 		return chunks;
 	}
 
-	public List<string> ProcessChunkFilter(long start, int length, ReadOnlySpan<char> query)
+	/// <summary>
+	/// Parses every line into a <see cref="LogInfo"/> over the mapped bytes. The result is computed
+	/// once and cached for the lifetime of the parser. No line text is decoded here.
+	/// </summary>
+	public ImmutableArray<LogInfo> Process()
 	{
-		Span<char> lowerquery = stackalloc char[query.Length];
-		query.ToLowerInvariant(lowerquery);
-		var remaining = new Utf8Span(pointer + start, length);
+		if (lines is { } cached)
+			return cached;
 
-		int maxByteCount = Encoding.UTF8.GetMaxByteCount(lowerquery.Length);
-
-		Span<byte> utf8TargetBuffer = maxByteCount <= 1024
-			? stackalloc byte[maxByteCount]
-			: new byte[maxByteCount];
-
-		int actualBytesWritten = Encoding.UTF8.GetBytes(lowerquery, utf8TargetBuffer);
-		ReadOnlySpan<byte> utf8Target = utf8TargetBuffer[..actualBytesWritten];
-
-		var result = new List<string>(128);
-
-		while (remaining.Length > 0)
-		{
-			var idx = remaining.Span.IndexOf(newLine);
-			var lineLength = idx >= 0 ? idx : remaining.Length;
-			var value = remaining.SliceUnsafe(0, lineLength);
-			var span = value.Span;
-
-			if (IndexOfIgnoreCaseAscii(span, utf8Target) >= 0)
-			{
-				var log = Encoding.UTF8.GetString(span);
-				result.Add(log);
-			}
-
-			int advance = idx >= 0 ? idx + 1 : remaining.Length;
-			remaining = remaining.SliceUnsafe(advance);
-		}
-
-		return result;
+		var immutable = ParseUncached();
+		lines = immutable;
+		return immutable;
 	}
 
-	public ImmutableArray<string> Filter(string query)
+	/// <summary>
+	/// Performs the full parse without reading or writing the cache. The memory map is set up once
+	/// in the constructor, so this measures the parse work in isolation.
+	/// </summary>
+	public ImmutableArray<LogInfo> ParseUncached()
 	{
+		if (fileLength is 0)
+			return [];
+
+		var chunks = SplitIntoMemoryChunks();
+		var n = chunks.Count;
+
+
+		var offsets = new int[n];
+		var total = 0;
+		for (var i = 0; i < n; i++)
+		{
+			var (start, length) = chunks[i];
+			offsets[i] = total;
+			total += CountLines(new ReadOnlySpan<byte>(pointer + start, length));
+		}
+
+		var result = new LogInfo[total];
+		Parallel.For(0, n, i =>
+		{
+			var (start, length) = chunks[i];
+			FillChunk(start, length, result, offsets[i]);
+		});
+
+		return ImmutableCollectionsMarshal.AsImmutableArray(result);
+	}
+
+	[SkipLocalsInit]
+	void FillChunk(long start, int length, LogInfo[] dest, int destOffset)
+	{
+		var chunkMemory = new UnmanagedMemoryManager<byte>(pointer + start, length).Memory;
+		var span = chunkMemory.Span;
+
+		var consumed = 0;
+		var w = destOffset;
+
+		while (consumed < length)
+		{
+			var rest = span.Slice(consumed);
+			var nl = rest.IndexOf(LF);
+
+			int contentLength, advance;
+			if (nl < 0)
+			{
+				contentLength = rest.Length;
+				advance = rest.Length;
+			}
+			else
+			{
+				contentLength = nl;
+				advance = nl + 1;
+			}
+
+			if (contentLength > 0 && rest[contentLength - 1] == CR)
+				contentLength--;
+
+			dest[w++] = new LogInfo(chunkMemory.Slice(consumed, contentLength));
+			consumed += advance;
+		}
+	}
+
+	/// <summary>
+	/// Returns the lines that contain <paramref name="query"/>, matched case-insensitively over
+	/// ASCII. The search runs on the raw UTF-8 bytes and returns matches as <see cref="LogInfo"/>,
+	/// so a line's <see cref="string"/> is only built if/when <see cref="LogInfo.Text"/> is read.
+	/// The needle is encoded and ASCII-folded once, then chunks are searched in parallel.
+	/// </summary>
+	public ImmutableArray<LogInfo> Filter(string query)
+	{
+		ArgumentException.ThrowIfNullOrEmpty(query);
+
+		if (fileLength == 0)
+			return ImmutableArray<LogInfo>.Empty;
+
+		// Encode once and ASCII-fold the needle in place with the same function used on the
+		// haystack, so the search is case-insensitive without allocating a lower-cased string.
+		var utf8Target = Encoding.UTF8.GetBytes(query);
+		for (var i = 0; i < utf8Target.Length; i++)
+			utf8Target[i] = ToLowerAscii(utf8Target[i]);
+
 		return SplitIntoMemoryChunks()
 			.AsParallel()
 			.AsOrdered()
-			.Select(tuple => ProcessChunkFilter(tuple.start, tuple.end, query))
+			.Select(tuple => FilterChunk(tuple.start, tuple.length, utf8Target))
 			.Aggregate(
-				() => new List<string>(256),
-				(result, chunkMatches) => { result.AddRange(chunkMatches); return result; },
-				(finalResult, localResult) => { finalResult.AddRange(localResult); return finalResult; },
-				finalResult => finalResult.ToImmutableArray());
+				() => new List<LogInfo>(64),
+				(acc, chunk) => { acc.AddRange(chunk); return acc; },
+				(a, b) => { a.AddRange(b); return a; },
+				acc => acc.ToImmutableArray());
 	}
 
-
-	[MemberNotNull(nameof(lines))]
-	public ImmutableArray<string> Process()
+	[SkipLocalsInit]
+	List<LogInfo> FilterChunk(long start, int length, byte[] lowerTarget)
 	{
-		lines ??= SplitIntoMemoryChunks()
-			.AsParallel()
-			.AsOrdered()
-			.Select(tuple => ProcessChunk(tuple.start, tuple.end))
-			.Aggregate(
-				() => new List<string>(finalListSize),
-				(result, chunk) => { result.AddRange(chunk); return result; },
-				(finalResult, localResult) => { finalResult.AddRange(localResult); return finalResult; },
-				finalResult => finalResult.ToImmutableArray()
-			);
+		var chunkMemory = new UnmanagedMemoryManager<byte>(pointer + start, length).Memory;
+		var span = chunkMemory.Span;
+		ReadOnlySpan<byte> target = lowerTarget;
 
-		return lines.Value;
-	}
+		var result = new List<LogInfo>(16);
+		var consumed = 0;
 
-	public List<string> ProcessChunk(long start, int length)
-	{
-		var remaining = new Utf8Span(pointer + start, length);
-
-		var result = new List<string>(512);
-
-		while (remaining.Length > 0)
+		while (consumed < length)
 		{
-			var idx = remaining.Span.IndexOf(newLine);
+			var rest = span.Slice(consumed);
+			var nl = rest.IndexOf(LF);
 
-			int lineLength = idx >= 0 ? idx : remaining.Length;
+			int contentLength, advance;
+			if (nl < 0)
+			{
+				contentLength = rest.Length;
+				advance = rest.Length;
+			}
+			else
+			{
+				contentLength = nl;
+				advance = nl + 1;
+			}
 
-			var value = remaining.SliceUnsafe(0, lineLength);
-			result.Add(Encoding.UTF8.GetString(value.Span));
+			if (contentLength > 0 && rest[contentLength - 1] == CR)
+				contentLength--;
 
-			int advance = idx >= 0 ? idx + 1 : remaining.Length;
-			remaining = remaining.SliceUnsafe(advance);
+			if (IndexOfIgnoreCaseAscii(rest.Slice(0, contentLength), target) >= 0)
+				result.Add(new LogInfo(chunkMemory.Slice(consumed, contentLength)));
+
+			consumed += advance;
 		}
 
 		return result;
 	}
 
-	const byte newLine = (byte)'\n';
-	const byte carriageReturn = (byte)'\r';
-	const byte semiCollon = (byte)';';
-
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	static byte ToLowerAscii(byte b) => (uint)(b - (byte)'A') <= (byte)'Z' - (byte)'A' ? (byte)(b | 0x20) : b;
+	internal static byte ToLowerAscii(byte b) =>
+	(uint)(b - (byte)'A') <= (byte)'Z' - (byte)'A' ? (byte)(b | 0x20) : b;
 
+	/// <summary>
+	/// Case-insensitive (ASCII) substring search. <paramref name="lowerNeedle"/> must already be
+	/// lower-cased. Anchors on the first byte (either case) using a vectorized
+	/// <see cref="MemoryExtensions.IndexOfAny{T}(ReadOnlySpan{T}, T, T)"/>, then verifies the rest.
+	/// </summary>
 	internal static int IndexOfIgnoreCaseAscii(ReadOnlySpan<byte> haystack, ReadOnlySpan<byte> lowerNeedle)
 	{
 		if (lowerNeedle.IsEmpty)
 			return 0;
 
-		byte firstLower = lowerNeedle[0];
-		byte firstUpper = (uint)(firstLower - (byte)'a') <= (byte)'z' - (byte)'a'
+		var firstLower = lowerNeedle[0];
+		var firstUpper = (uint)(firstLower - (byte)'a') <= (byte)'z' - (byte)'a'
 			? (byte)(firstLower & ~0x20)
 			: firstLower;
 
@@ -215,8 +280,7 @@ public unsafe sealed partial class LoggerReader : IDisposable
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	static bool MatchesIgnoreCaseAscii(ReadOnlySpan<byte> candidate, ReadOnlySpan<byte> lowerNeedle)
 	{
-		var size = lowerNeedle.Length;
-		for (var j = 0; j < size; j++)
+		for (var j = 0; j < lowerNeedle.Length; j++)
 		{
 			if (ToLowerAscii(candidate[j]) != lowerNeedle[j])
 				return false;
@@ -246,23 +310,25 @@ public unsafe sealed partial class LoggerReader : IDisposable
 		return idx;
 	}
 
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	static int CountLines(ReadOnlySpan<byte> span)
+	{
+		if (span.Length == 0)
+			return 0;
+
+		var count = span.Count(LF);
+
+		if (span[^1] != LF)
+			count++;
+
+		return count;
+	}
+
 	public void Dispose()
 	{
 		vaHandle.Dispose();
 		va.Dispose();
 		mmf.Dispose();
-		stream.Dispose();
 		GC.SuppressFinalize(this);
-	}
-
-	static double* Init10Powers()
-	{
-		for (var i = 0; i < 64; i++)
-		{
-			powersOf10[i] = 1 / Math.Pow(10, i);
-		}
-
-		powersHandle = GCHandle.Alloc(powersOf10, GCHandleType.Pinned);
-		return (double*)powersHandle.AddrOfPinnedObject();
 	}
 }
