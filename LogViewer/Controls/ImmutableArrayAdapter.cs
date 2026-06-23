@@ -14,7 +14,7 @@ sealed class ImmutableArrayAdapter<T> : IVirtualScrollAdapter
 
 	public object? GetItem(int sectionIndex, int itemIndex)
 	{
-		if ((uint)itemIndex <= (uint)array.Length)
+		if ((uint)itemIndex < (uint)array.Length)
 			return array[itemIndex];
 		return null;
 	}
