@@ -14,11 +14,9 @@ public static class MauiProgram
 			.UseVisualTestRunner(conf => conf
 				.AddNUnit()
 				.AddConsoleResultChannel()
-				.AddResourceDictionary<LogViewer.Resources.Styles.Colors>()
-				.AddResourceDictionary<LogViewer.Resources.Styles.Styles>()
+				.AddResourceDictionary<Resources.Styles.Colors>()
+				.AddResourceDictionary<Resources.Styles.Styles>()
 				.AddTestAssembly(typeof(MauiProgram).Assembly))
-			
-			
 			.ConfigureFonts(fonts =>
 			{
 				fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
