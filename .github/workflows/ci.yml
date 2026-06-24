@@ -29,29 +29,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: |
-            10.0.x
-
-      - name: Show .NET info
-        shell: pwsh
-        run: dotnet --info
-
-      - name: Install MAUI workload
-        shell: pwsh
-        run: dotnet workload install maui --source https://api.nuget.org/v3/index.json
+      - name: Setup tools
+        uses: ./.github/workflows/setup-tools
 
       - name: Restore
         shell: pwsh
         run: dotnet restore .\LogViewer.slnx
-
-      - name: Enable Windows Developer Mode
-        shell: pwsh
-        run: |
-          reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock" /v AllowDevelopmentWithoutDevLicense /t REG_DWORD /d 1 /f
-          reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock" /v AllowAllTrustedApps /t REG_DWORD /d 1 /f
 
       - name: 1) Build DeviceTests
         shell: pwsh
@@ -61,31 +44,13 @@ jobs:
             -f $env:WINDOWS_TFM `
             /bl:.\artifacts\logs\msbuild-build-devicetests.binlog
 
-      - name: Prepare WinAppSDK runtime for tests
-        shell: pwsh
-        run: |
-          dotnet restore $env:TEST_PROJECT
-          $arch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'win10-arm64' } else { 'win10-x64' }
-          $wasdkDir = Get-ChildItem "$env:USERPROFILE/.nuget/packages/microsoft.windowsappsdk" -Directory |
-            Sort-Object Name -Descending | Select-Object -First 1
-          if (-not $wasdkDir) { Write-Error "WindowsAppSDK NuGet package not found"; exit 1 }
-          $msixDir = Join-Path $wasdkDir.FullName "tools/MSIX/$arch"
-          Write-Host "Installing WinAppSDK runtime from: $msixDir"
-          Get-ChildItem "$msixDir/*.msix" | ForEach-Object {
-            Write-Host "  Installing: $($_.Name)"
-            Add-AppxPackage -Path $_.FullName -ErrorAction SilentlyContinue
-          }
-
       - name: 2) Run tests
-        shell: pwsh
-        run: |
-          dotnet test $env:TEST_PROJECT `
-            -c $env:CONFIGURATION `
-            -f $env:WINDOWS_TFM `
-            --filter "Category!=ExpectedFailure" `
-            --logger "trx;LogFileName=test-results.trx" `
-            --results-directory .\artifacts\test-results `
-            /bl:.\artifacts\logs\msbuild-test-devicetests.binlog
+        uses: ./.github/workflows/test-dotnet-test-windows
+        with:
+          test-project: LogViewer.DeviceTests\LogViewer.DeviceTests.csproj
+          target-framework: net10.0-windows10.0.19041.0
+          configuration: Release
+          artifact-name: Test Results (dotnet test) - Windows
 
       - name: 3) Build LogViewer
         shell: pwsh
@@ -112,13 +77,6 @@ jobs:
         with:
           name: LogViewer-Windows-Package
           path: .\artifacts\package
-
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: Test-Results
-          path: .\artifacts\test-results
 
       - name: Upload build logs
         if: always()
