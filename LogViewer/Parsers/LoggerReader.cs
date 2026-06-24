@@ -4,7 +4,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO.MemoryMappedFiles;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Text;
 
 
 namespace LogViewer.Parsers;
@@ -168,28 +167,41 @@ public unsafe sealed partial class LoggerReader : IDisposable
 	}
 
 	/// <summary>
-	/// Returns the lines that contain <paramref name="query"/>, matched case-insensitively over
-	/// ASCII. The search runs on the raw UTF-8 bytes and returns matches as <see cref="LogInfo"/>,
-	/// so a line's <see cref="string"/> is only built if/when <see cref="LogInfo.Text"/> is read.
-	/// The needle is encoded and ASCII-folded once, then chunks are searched in parallel.
+	/// Returns the lines that match the boolean query, evaluated case-insensitively over ASCII.
+	/// The query supports <c>&amp;</c> (AND), <c>|</c> (OR), <c>!</c> (NOT), parentheses, and
+	/// quoted phrases. Simple terms (no operators) behave exactly as before.
+	/// The search runs on raw UTF-8 bytes; a line's <see cref="string"/> is only decoded on demand.
 	/// </summary>
+	/// <example>
+	/// <code>
+	/// reader.Filter("Maui &amp; close")     // lines containing both "Maui" and "close"
+	/// reader.Filter("!close")              // lines that do NOT contain "close"
+	/// reader.Filter("error | warning")    // lines containing "error" or "warning"
+	/// reader.Filter("(error | warn) &amp; !debug")
+	/// </code>
+	/// </example>
 	public ImmutableArray<LogInfo> Filter(string query)
 	{
 		ArgumentException.ThrowIfNullOrEmpty(query);
+		var node = QueryParser.Parse(query);
+		return Filter(node);
+	}
+
+	/// <summary>
+	/// Returns the lines that satisfy <paramref name="query"/>, evaluated in parallel over
+	/// memory-mapped chunks. No line text is decoded unless <see cref="LogInfo.Text"/> is read.
+	/// </summary>
+	internal ImmutableArray<LogInfo> Filter(QueryNode query)
+	{
+		ArgumentNullException.ThrowIfNull(query);
 
 		if (fileLength == 0)
 			return ImmutableArray<LogInfo>.Empty;
 
-		// Encode once and ASCII-fold the needle in place with the same function used on the
-		// haystack, so the search is case-insensitive without allocating a lower-cased string.
-		var utf8Target = Encoding.UTF8.GetBytes(query);
-		for (var i = 0; i < utf8Target.Length; i++)
-			utf8Target[i] = ToLowerAscii(utf8Target[i]);
-
 		return SplitIntoMemoryChunks()
 			.AsParallel()
 			.AsOrdered()
-			.Select(tuple => FilterChunk(tuple.start, tuple.length, utf8Target))
+			.Select(tuple => FilterChunk(tuple.start, tuple.length, query))
 			.Aggregate(
 				() => new List<LogInfo>(64),
 				(acc, chunk) => { acc.AddRange(chunk); return acc; },
@@ -198,11 +210,10 @@ public unsafe sealed partial class LoggerReader : IDisposable
 	}
 
 	[SkipLocalsInit]
-	List<LogInfo> FilterChunk(long start, int length, byte[] lowerTarget)
+	List<LogInfo> FilterChunk(long start, int length, QueryNode query)
 	{
 		var chunkMemory = new UnmanagedMemoryManager<byte>(pointer + start, length).Memory;
 		var span = chunkMemory.Span;
-		ReadOnlySpan<byte> target = lowerTarget;
 
 		var result = new List<LogInfo>(16);
 		var consumed = 0;
@@ -227,7 +238,7 @@ public unsafe sealed partial class LoggerReader : IDisposable
 			if (contentLength > 0 && rest[contentLength - 1] == CR)
 				contentLength--;
 
-			if (IndexOfIgnoreCaseAscii(rest.Slice(0, contentLength), target) >= 0)
+			if (query.Matches(rest.Slice(0, contentLength)))
 				result.Add(new LogInfo(chunkMemory.Slice(consumed, contentLength)));
 
 			consumed += advance;
