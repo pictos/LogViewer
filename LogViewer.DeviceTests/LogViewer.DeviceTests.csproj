@@ -42,7 +42,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.9" />
 		<PackageReference Include="DeviceRunners.VisualRunners.Maui" Version="$(DeviceRunnersVersion)" />
 		<PackageReference Include="DeviceRunners.VisualRunners.NUnit" Version="$(DeviceRunnersVersion)" />
