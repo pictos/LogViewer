@@ -82,4 +82,10 @@ public class ParserTest
 		Assert.That(filter.Length, Is.EqualTo(filter2.Length));
 		Assert.That(filter.Length, Is.EqualTo(filter3.Length));
 	}
+
+	[Test]
+	public void Fail()
+	{
+		Assert.IsTrue(false);
+	}
 }
