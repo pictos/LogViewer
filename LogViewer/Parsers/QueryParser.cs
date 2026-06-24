@@ -8,6 +8,12 @@ namespace LogViewer.Parsers;
 public abstract class QueryNode
 {
 	public abstract bool Matches(ReadOnlySpan<byte> line);
+
+	/// <summary>
+	/// A stable, case-insensitive key identifying the predicate this node represents. Two nodes
+	/// with the same key always match the same lines, so it is safe to use as a cache key.
+	/// </summary>
+	public abstract string Key { get; }
 }
 
 /// <summary>Matches lines that contain the literal <paramref name="term"/> (case-insensitive ASCII).</summary>
@@ -21,7 +27,12 @@ public sealed class TermNode : QueryNode
 		for (var i = 0; i < bytes.Length; i++)
 			bytes[i] = LoggerReader.ToLowerAscii(bytes[i]);
 		_lowerUtf8 = bytes;
+
+		// Case-insensitive matching means "Info" and "info" are the same predicate.
+		Key = term.ToLowerInvariant();
 	}
+
+	public override string Key { get; }
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public override bool Matches(ReadOnlySpan<byte> line) =>
@@ -31,6 +42,11 @@ public sealed class TermNode : QueryNode
 /// <summary>Matches lines where both operands match (short-circuits on first failure).</summary>
 public sealed class AndNode(QueryNode left, QueryNode right) : QueryNode
 {
+	public QueryNode Left => left;
+	public QueryNode Right => right;
+
+	public override string Key => $"({left.Key}&{right.Key})";
+
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public override bool Matches(ReadOnlySpan<byte> line) => left.Matches(line) && right.Matches(line);
 }
@@ -38,6 +54,11 @@ public sealed class AndNode(QueryNode left, QueryNode right) : QueryNode
 /// <summary>Matches lines where at least one operand matches (short-circuits on first success).</summary>
 public sealed class OrNode(QueryNode left, QueryNode right) : QueryNode
 {
+	public QueryNode Left => left;
+	public QueryNode Right => right;
+
+	public override string Key => $"({left.Key}|{right.Key})";
+
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public override bool Matches(ReadOnlySpan<byte> line) => left.Matches(line) || right.Matches(line);
 }
@@ -45,6 +66,10 @@ public sealed class OrNode(QueryNode left, QueryNode right) : QueryNode
 /// <summary>Matches lines where the inner operand does NOT match.</summary>
 public sealed class NotNode(QueryNode operand) : QueryNode
 {
+	public QueryNode Operand => operand;
+
+	public override string Key => $"!{operand.Key}";
+
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public override bool Matches(ReadOnlySpan<byte> line) => !operand.Matches(line);
 }

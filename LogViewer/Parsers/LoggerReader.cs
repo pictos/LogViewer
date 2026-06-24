@@ -183,68 +183,18 @@ public unsafe sealed partial class LoggerReader : IDisposable
 	public ImmutableArray<LogInfo> Filter(string query)
 	{
 		ArgumentException.ThrowIfNullOrEmpty(query);
-		var node = QueryParser.Parse(query);
-		return Filter(node);
+		return Filter(QueryParser.Parse(query));
 	}
 
 	/// <summary>
-	/// Returns the lines that satisfy <paramref name="query"/>, evaluated in parallel over
-	/// memory-mapped chunks. No line text is decoded unless <see cref="LogInfo.Text"/> is read.
+	/// Returns the lines that satisfy <paramref name="query"/>. Results are memoized by the query's
+	/// canonical key, and <c>A &amp; B</c> queries are narrowed to evaluate <c>B</c> only over the
+	/// (cached) lines matching <c>A</c>. See the caching partial for details.
 	/// </summary>
 	public ImmutableArray<LogInfo> Filter(QueryNode query)
 	{
 		ArgumentNullException.ThrowIfNull(query);
-
-		if (fileLength == 0)
-			return ImmutableArray<LogInfo>.Empty;
-
-		return SplitIntoMemoryChunks()
-			.AsParallel()
-			.AsOrdered()
-			.Select(tuple => FilterChunk(tuple.start, tuple.length, query))
-			.Aggregate(
-				() => new List<LogInfo>(64),
-				(acc, chunk) => { acc.AddRange(chunk); return acc; },
-				(a, b) => { a.AddRange(b); return a; },
-				acc => acc.ToImmutableArray());
-	}
-
-	[SkipLocalsInit]
-	List<LogInfo> FilterChunk(long start, int length, QueryNode query)
-	{
-		var chunkMemory = new UnmanagedMemoryManager<byte>(pointer + start, length).Memory;
-		var span = chunkMemory.Span;
-
-		var result = new List<LogInfo>(16);
-		var consumed = 0;
-
-		while (consumed < length)
-		{
-			var rest = span.Slice(consumed);
-			var nl = rest.IndexOf(LF);
-
-			int contentLength, advance;
-			if (nl < 0)
-			{
-				contentLength = rest.Length;
-				advance = rest.Length;
-			}
-			else
-			{
-				contentLength = nl;
-				advance = nl + 1;
-			}
-
-			if (contentLength > 0 && rest[contentLength - 1] == CR)
-				contentLength--;
-
-			if (query.Matches(rest.Slice(0, contentLength)))
-				result.Add(new LogInfo(chunkMemory.Slice(consumed, contentLength)));
-
-			consumed += advance;
-		}
-
-		return result;
+		return EvaluateCached(query);
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
