@@ -5,13 +5,13 @@ namespace LogViewer.Parsers;
 
 // ── AST nodes ────────────────────────────────────────────────────────────────
 
-internal abstract class QueryNode
+public abstract class QueryNode
 {
 	public abstract bool Matches(ReadOnlySpan<byte> line);
 }
 
 /// <summary>Matches lines that contain the literal <paramref name="term"/> (case-insensitive ASCII).</summary>
-internal sealed class TermNode : QueryNode
+public sealed class TermNode : QueryNode
 {
 	readonly byte[] _lowerUtf8;
 
@@ -29,21 +29,21 @@ internal sealed class TermNode : QueryNode
 }
 
 /// <summary>Matches lines where both operands match (short-circuits on first failure).</summary>
-internal sealed class AndNode(QueryNode left, QueryNode right) : QueryNode
+public sealed class AndNode(QueryNode left, QueryNode right) : QueryNode
 {
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public override bool Matches(ReadOnlySpan<byte> line) => left.Matches(line) && right.Matches(line);
 }
 
 /// <summary>Matches lines where at least one operand matches (short-circuits on first success).</summary>
-internal sealed class OrNode(QueryNode left, QueryNode right) : QueryNode
+public sealed class OrNode(QueryNode left, QueryNode right) : QueryNode
 {
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public override bool Matches(ReadOnlySpan<byte> line) => left.Matches(line) || right.Matches(line);
 }
 
 /// <summary>Matches lines where the inner operand does NOT match.</summary>
-internal sealed class NotNode(QueryNode operand) : QueryNode
+public sealed class NotNode(QueryNode operand) : QueryNode
 {
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public override bool Matches(ReadOnlySpan<byte> line) => !operand.Matches(line);
@@ -64,7 +64,7 @@ internal sealed class NotNode(QueryNode operand) : QueryNode
 /// </list>
 /// </para>
 /// </summary>
-internal sealed class QueryParser
+public sealed class QueryParser
 {
 	readonly string _input;
 	int _pos;

@@ -1,4 +1,4 @@
-﻿using Microsoft.Win32.SafeHandles;
+using Microsoft.Win32.SafeHandles;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.IO.MemoryMappedFiles;
@@ -191,7 +191,7 @@ public unsafe sealed partial class LoggerReader : IDisposable
 	/// Returns the lines that satisfy <paramref name="query"/>, evaluated in parallel over
 	/// memory-mapped chunks. No line text is decoded unless <see cref="LogInfo.Text"/> is read.
 	/// </summary>
-	internal ImmutableArray<LogInfo> Filter(QueryNode query)
+	public ImmutableArray<LogInfo> Filter(QueryNode query)
 	{
 		ArgumentNullException.ThrowIfNull(query);
 
@@ -343,3 +343,4 @@ public unsafe sealed partial class LoggerReader : IDisposable
 		GC.SuppressFinalize(this);
 	}
 }
+
