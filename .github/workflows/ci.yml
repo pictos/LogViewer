@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-test-package:
+    name: Build, test and package (Windows)
+    runs-on: windows-2025
+
+    env:
+      CONFIGURATION: Release
+      TEST_PROJECT: LogViewer.DeviceTests\LogViewer.DeviceTests.csproj
+      APP_PROJECT: LogViewer\LogViewer.csproj
+      WINDOWS_TFM: net10.0-windows10.0.19041.0
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            10.0.x
+
+      - name: Show .NET info
+        shell: pwsh
+        run: dotnet --info
+
+      - name: Install MAUI workload
+        shell: pwsh
+        run: dotnet workload install maui --source https://api.nuget.org/v3/index.json
+
+      - name: Restore
+        shell: pwsh
+        run: dotnet restore .\LogViewer.slnx
+
+      - name: 1) Build DeviceTests
+        shell: pwsh
+        run: |
+          dotnet build $env:TEST_PROJECT `
+            -c $env:CONFIGURATION `
+            -f $env:WINDOWS_TFM `
+            /bl:.\artifacts\logs\msbuild-build-devicetests.binlog
+
+      - name: 2) Run tests
+        shell: pwsh
+        run: |
+          dotnet test $env:TEST_PROJECT `
+            -c $env:CONFIGURATION `
+            -f $env:WINDOWS_TFM `
+            -p:WindowsPackageType=None `
+            --logger "trx;LogFileName=test-results.trx" `
+            --results-directory .\artifacts\test-results `
+            /bl:.\artifacts\logs\msbuild-test-devicetests.binlog
+
+      - name: 3) Build LogViewer
+        shell: pwsh
+        run: |
+          dotnet build $env:APP_PROJECT `
+            -c $env:CONFIGURATION `
+            -f $env:WINDOWS_TFM `
+            /bl:.\artifacts\logs\msbuild-build-logviewer.binlog
+
+      - name: 4) Publish package for PR artifacts
+        if: github.event_name == 'pull_request'
+        shell: pwsh
+        run: |
+          dotnet publish $env:APP_PROJECT `
+            -c $env:CONFIGURATION `
+            -f $env:WINDOWS_TFM `
+            -r win-x64 `
+            -p:WindowsPackageType=None `
+            --output .\artifacts\package\LogViewer
+
+      - name: Upload package artifact
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: LogViewer-Windows-Package
+          path: .\artifacts\package
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Test-Results
+          path: .\artifacts\test-results
+
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Build-Logs
+          path: .\artifacts\logs
