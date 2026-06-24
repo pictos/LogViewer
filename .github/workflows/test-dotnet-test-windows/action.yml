@@ -38,14 +38,29 @@ runs:
     - name: Install Windows App Runtime framework
       shell: pwsh
       run: |
-        $arch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'win10-arm64' } else { 'win10-x64' }
-        $wasdkDir = Get-ChildItem "$env:USERPROFILE/.nuget/packages/microsoft.windowsappsdk" -Directory |
-          Sort-Object Name -Descending | Select-Object -First 1
-        if (-not $wasdkDir) { Write-Error "WindowsAppSDK NuGet package not found"; exit 1 }
-        $msixDir = Join-Path $wasdkDir.FullName "tools/MSIX/$arch"
-        Write-Host "Installing WinAppSDK runtime from: $msixDir"
-        Get-ChildItem "$msixDir/*.msix" | ForEach-Object {
-          Write-Host "  Installing: $($_.Name)"
+        $packagesRoot = Join-Path $env:USERPROFILE ".nuget/packages"
+        $wasdkPackages = Get-ChildItem $packagesRoot -Directory |
+          Where-Object { $_.Name -like 'microsoft.windowsappsdk*' } |
+          Sort-Object Name -Descending
+
+        if (-not $wasdkPackages) {
+          Write-Error "Windows App SDK NuGet package not found"
+          exit 1
+        }
+
+        $msixFiles = foreach ($package in $wasdkPackages) {
+          Get-ChildItem $package.FullName -Recurse -Filter '*.msix' -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -match 'tools[\\/]+MSIX[\\/]+.*\.msix$' }
+        }
+
+        $msixFiles = $msixFiles | Sort-Object FullName -Unique
+        if (-not $msixFiles) {
+          Write-Error "Windows App SDK MSIX runtime files were not found"
+          exit 1
+        }
+
+        $msixFiles | ForEach-Object {
+          Write-Host "Installing: $($_.FullName)"
           Add-AppxPackage -Path $_.FullName -ErrorAction SilentlyContinue
         }
 
