@@ -40,7 +40,7 @@ sealed partial class LogViewModel : BaseViewModel
 	}
 
 	[RelayCommand]
-	void Filter()
+	async Task Filter()
 	{
 		var q = Query;
 		if (string.IsNullOrEmpty(q))
@@ -51,7 +51,9 @@ sealed partial class LogViewModel : BaseViewModel
 			return;
 		}
 
+		await Task.CompletedTask.ConfigureAwait(ConfigureAwaitOptions.ForceYielding);
 		var result = reader.Filter(q);
+		await MainThreadSwitcher.SwitchToMainThreadAsync();
 		LogSource = new ImmutableArrayAdapter(result);
 		Status = $"Filter applied, found {result.Length} lines.";
 	}
