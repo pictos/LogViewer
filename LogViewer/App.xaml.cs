@@ -1,5 +1,4 @@
-﻿using PJ.Core;
-using XmlnsPrefixAttribute = Microsoft.Maui.Controls.XmlnsPrefixAttribute;
+﻿using XmlnsPrefixAttribute = Microsoft.Maui.Controls.XmlnsPrefixAttribute;
 
 [assembly: XmlnsDefinition("http://schemas.microsoft.com/dotnet/maui/global", "LogViewer")]
 [assembly: XmlnsDefinition("http://schemas.microsoft.com/dotnet/maui/global", "LogViewer.ViewModels")]
@@ -14,12 +13,10 @@ namespace LogViewer;
 
 public partial class App : Application
 {
-	internal static PJ.Core.UIThreadManager UIThreadManager { get; private set; } = default!;
-
 	public App()
 	{
 		InitializeComponent();
-		UIThreadManager = new PJ.Core.UIThreadManager(SynchronizationContext.Current!);
+		_ = MainThreadManager.MainThreadSwitcher;
 	}
 
 	protected override Window CreateWindow(IActivationState? activationState)

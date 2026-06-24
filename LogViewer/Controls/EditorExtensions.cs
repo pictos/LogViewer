@@ -32,8 +32,8 @@ sealed class EditorExtensions
 #else
 			var platformEditor = new MauiTextView();
 
-			platformEditor.AddMauiDoneAccessoryView(handler);
-			handler.PlatformView.BorderStyle = UIKit.UITextViewBorderStyle.None;
+			//platformEditor.AddMauiDoneAccessoryView(handler);
+			platformEditor.BorderStyle = UIKit.UITextViewBorderStyle.None;
 			return platformEditor;
 #endif
 		};

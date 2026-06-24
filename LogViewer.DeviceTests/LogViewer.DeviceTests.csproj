@@ -1,0 +1,110 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<DeviceRunnersVersion>0.1.0-preview.11</DeviceRunnersVersion>
+		<IsDeviceTestProject>true</IsDeviceTestProject>
+
+		<!-- Note for MacCatalyst:
+		The default runtime is maccatalyst-x64, except in Release config, in which case the default is maccatalyst-x64;maccatalyst-arm64.
+		When specifying both architectures, use the plural <RuntimeIdentifiers> instead of the singular <RuntimeIdentifier>.
+		The Mac App Store will NOT accept apps with ONLY maccatalyst-arm64 indicated;
+		either BOTH runtimes must be indicated or ONLY macatalyst-x64. -->
+		<!-- For example: <RuntimeIdentifiers>maccatalyst-x64;maccatalyst-arm64</RuntimeIdentifiers> -->
+
+		<RootNamespace>LogViewer.DeviceTests</RootNamespace>
+
+		<!-- Display name -->
+		<ApplicationTitle>LogViewer.DeviceTests</ApplicationTitle>
+
+		<!-- App Identifier -->
+		<ApplicationId>com.companyname.logviewer.devicetests</ApplicationId>
+
+		<!-- Versions -->
+		<ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+		<ApplicationVersion>1</ApplicationVersion>
+
+		<!-- To develop, package, and publish an app to the Microsoft Store, see: https://aka.ms/MauiTemplateUnpackaged -->
+		<WindowsPackageType>None</WindowsPackageType>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- App Icon -->
+		<MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#512BD4" />
+
+		<!-- Splash Screen -->
+		<MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#512BD4" BaseSize="128,128" />
+
+		<!-- Images -->
+
+		<!-- Custom Fonts -->
+		<MauiFont Include="Resources\Fonts\*" />
+
+		<!-- Raw Assets (also remove the "Resources\Raw" prefix) -->
+		<MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.9" />
+		<PackageReference Include="DeviceRunners.VisualRunners.Maui" Version="$(DeviceRunnersVersion)" />
+		<PackageReference Include="DeviceRunners.VisualRunners.NUnit" Version="$(DeviceRunnersVersion)" />
+		<PackageReference Include="NUnit" Version="4.5.1" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\LogViewer\LogViewer.csproj">
+			<AdditionalProperties>IsDeviceTestProject=true</AdditionalProperties>
+		</ProjectReference>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Folder Include="Resources\Fonts\" />
+	  <Folder Include="Resources\Styles\" />
+	</ItemGroup>
+
+	<!-- The MAUI resizetizer calls GetMauiItems on each ProjectReference via a separate MSBuild
+       invocation with ONLY TargetFramework — it does not propagate IsDeviceTestProject or any
+       ProjectReference <Properties> metadata. This means LogViewer's MauiIcon/MauiSplashScreen
+       are imported even though we only want LogViewer as a library.
+       This target strips those imported items after ResizetizeCollectItems has gathered them. -->
+	<Target Name="_RemoveLogViewerResizetizerItems" AfterTargets="ResizetizeCollectItems">
+		<ItemGroup>
+			<!-- Remove LogViewer's app icon from MauiIcon and from MauiImage (where it lands as IsAppIcon=True) -->
+			<MauiIcon Remove="@(MauiIcon)" Condition="$([System.String]::new('%(Identity)').Contains('LogViewer\Resources\AppIcon'))" />
+			<MauiImage Remove="@(MauiImage)" Condition="$([System.String]::new('%(Identity)').Contains('LogViewer\Resources\AppIcon'))" />
+			<!-- Remove LogViewer's splash screen -->
+			<MauiSplashScreen Remove="@(MauiSplashScreen)" Condition="$([System.String]::new('%(Identity)').Contains('LogViewer'))" />
+		</ItemGroup>
+	</Target>
+
+	<!-- VS solution builds set BuildProjectReferences=false and manage project order themselves.
+       This means ProjectReference <SetConfiguration> / <AdditionalProperties> metadata is NEVER
+       forwarded to LogViewer; VS builds it as a standalone Exe with WindowsPackageType=MSIX,
+       which may not produce the DLL at the path DeviceTests expects.
+       Fix: explicitly invoke MSBuild on LogViewer with IsDeviceTestProject=true before assembly
+       references are resolved. In CLI mode this is a no-op (MSBuild's build-result cache hits
+       immediately since ResolveProjectReferences already built it with the same properties). -->
+	<Target Name="_EnsureLogViewerLibraryBuilt" BeforeTargets="ResolveProjectReferences" Condition="'$(BuildProjectReferences)' == 'false' and $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
+		<MSBuild Projects="..\LogViewer\LogViewer.csproj" Properties="Configuration=$(Configuration);TargetFramework=$(TargetFramework);IsDeviceTestProject=true;IncludePriFilesOutputGroup=false;IncludeCopyLocalFilesOutputGroup=false" Targets="Build" BuildInParallel="false" />
+	</Target>
+
+	<!-- When the Windows App SDK's GetPriOutputs target calls MSBuild on LogViewer, it only passes
+       SetConfiguration and SetPlatform as global properties — it does NOT propagate IsDeviceTestProject
+       or any ProjectReference <Properties> metadata. Without IsDeviceTestProject=true, LogViewer builds
+       in full app mode, generates XBF content (e.g. Files/Platforms/Windows/App.xbf), and those
+       resources duplicate what DeviceTests already owns, causing PRI175/PRI277 conflicts.
+       Fix: inject IsDeviceTestProject=true (plus the PRI suppressions) into SetConfiguration so they are
+       passed as global properties to LogViewer during GetPriOutputs. -->
+	<Target Name="_ExcludeLogViewerFrameworkPris" AfterTargets="AssignProjectConfiguration" Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
+		<ItemGroup>
+			<ProjectReferenceWithConfiguration Condition="'%(Filename)' == 'LogViewer'">
+				<SetConfiguration>%(ProjectReferenceWithConfiguration.SetConfiguration);IsDeviceTestProject=true;IncludeProjectPriFile=false;IncludePriFilesOutputGroup=false;IncludeCopyLocalFilesOutputGroup=false</SetConfiguration>
+			</ProjectReferenceWithConfiguration>
+		</ItemGroup>
+	</Target>
+
+	<Target Name="_VerifyIsTestProjectProperty" BeforeTargets="DispatchToInnerBuilds;BeforeBuild">
+		<Error Condition="'$(IsDeviceTestProject)' != 'true'" Text="Set the property `IsDeviceTestProject` to `true` in your Directory.Build.Props file." />
+	</Target>
+
+</Project>

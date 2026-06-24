@@ -35,7 +35,7 @@ sealed partial class LogViewModel : BaseViewModel
 		await Task.CompletedTask.ConfigureAwait(ConfigureAwaitOptions.ForceYielding);
 		var result = reader.Process();
 		UpdateLineIndexes(result);
-		await UIThreadManager.SwitchToMainThreadAsync();
+		await MainThreadSwitcher.SwitchToMainThreadAsync();
 		fullText = LogSource = new ImmutableArrayAdapter<LogInfo>(result);
 		Status = $"Loaded log with {result.Length} lines.";
 	}

@@ -1,3 +1,8 @@
 <Solution>
+  <Folder Name="/SolutionItems/">
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Build.Targets" />
+  </Folder>
+  <Project Path="LogViewer.DeviceTests/LogViewer.DeviceTests.csproj" Id="94ba7fca-6345-405a-8c5c-c8f18710efdf" />
   <Project Path="LogViewer/LogViewer.csproj" />
 </Solution>
