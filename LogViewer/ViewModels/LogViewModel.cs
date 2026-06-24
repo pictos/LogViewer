@@ -34,9 +34,8 @@ sealed partial class LogViewModel : BaseViewModel
 	{
 		await Task.CompletedTask.ConfigureAwait(ConfigureAwaitOptions.ForceYielding);
 		var result = reader.Process();
-		UpdateLineIndexes(result);
 		await MainThreadSwitcher.SwitchToMainThreadAsync();
-		fullText = LogSource = new ImmutableArrayAdapter<LogInfo>(result);
+		fullText = LogSource = new ImmutableArrayAdapter(result);
 		Status = $"Loaded log with {result.Length} lines.";
 	}
 
@@ -53,15 +52,8 @@ sealed partial class LogViewModel : BaseViewModel
 		}
 
 		var result = reader.Filter(q);
-		UpdateLineIndexes(result);
-		LogSource = new ImmutableArrayAdapter<LogInfo>(result);
+		LogSource = new ImmutableArrayAdapter(result);
 		Status = $"Filter applied, found {result.Length} lines.";
-	}
-
-	static void UpdateLineIndexes(System.Collections.Immutable.ImmutableArray<LogInfo> lines)
-	{
-		for (var i = 0; i < lines.Length; i++)
-			lines[i].Index = i;
 	}
 
 	[RelayCommand]

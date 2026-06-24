@@ -3,11 +3,11 @@ using System.Collections.Immutable;
 
 namespace LogViewer.Controls;
 
-sealed class ImmutableArrayAdapter<T> : IVirtualScrollAdapter
+sealed class ImmutableArrayAdapter : IVirtualScrollAdapter
 {
-	private readonly ImmutableArray<T> array;
+	private readonly ImmutableArray<LogInfo> array;
 
-	public ImmutableArrayAdapter(ImmutableArray<T> array)
+	public ImmutableArrayAdapter(ImmutableArray<LogInfo> array)
 	{
 		this.array = array;
 	}
@@ -16,7 +16,10 @@ sealed class ImmutableArrayAdapter<T> : IVirtualScrollAdapter
 	{
 		var a = array;
 		if ((uint)itemIndex < (uint)a.Length)
+		{
+			a[itemIndex].Index = itemIndex;
 			return a[itemIndex];
+		}
 		return null;
 	}
 
