@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using CommunityToolkit.Maui;
+using Nalu;
 
 namespace LogViewer;
 public static class MauiProgram
@@ -18,6 +19,7 @@ public static class MauiProgram
             .ConfigureMauiHandlers(h =>
             {
                 EditorExtensions.InitHandler();
+                VirtualScrollExtensions.InitHandler();
             })
             .UseMauiCommunityToolkit();
 #if DEBUG
