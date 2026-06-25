@@ -52,10 +52,17 @@ sealed partial class LogViewModel : BaseViewModel
 		}
 
 		await Task.CompletedTask.ConfigureAwait(ConfigureAwaitOptions.ForceYielding);
-		var result = reader.Filter(q);
-		await MainThreadSwitcher.SwitchToMainThreadAsync();
-		LogSource = new ImmutableArrayAdapter(result);
-		Status = $"Filter applied, found {result.Length} lines.";
+		try
+		{
+			var result = reader.Filter(q);
+			await MainThreadSwitcher.SwitchToMainThreadAsync();
+			LogSource = new ImmutableArrayAdapter(result);
+			Status = $"Filter applied, found {result.Length} lines.";
+		}
+		catch (Exception ex)
+		{
+			Status = $"Error applying filter: {ex.Message}";
+		}
 	}
 
 	[RelayCommand]

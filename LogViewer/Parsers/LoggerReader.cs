@@ -1,10 +1,9 @@
-﻿using Microsoft.Win32.SafeHandles;
+using Microsoft.Win32.SafeHandles;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.IO.MemoryMappedFiles;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Text;
 
 
 namespace LogViewer.Parsers;
@@ -168,72 +167,34 @@ public unsafe sealed partial class LoggerReader : IDisposable
 	}
 
 	/// <summary>
-	/// Returns the lines that contain <paramref name="query"/>, matched case-insensitively over
-	/// ASCII. The search runs on the raw UTF-8 bytes and returns matches as <see cref="LogInfo"/>,
-	/// so a line's <see cref="string"/> is only built if/when <see cref="LogInfo.Text"/> is read.
-	/// The needle is encoded and ASCII-folded once, then chunks are searched in parallel.
+	/// Returns the lines that match the boolean query, evaluated case-insensitively over ASCII.
+	/// The query supports <c>&amp;</c> (AND), <c>|</c> (OR), <c>!</c> (NOT), parentheses, and
+	/// quoted phrases. Simple terms (no operators) behave exactly as before.
+	/// The search runs on raw UTF-8 bytes; a line's <see cref="string"/> is only decoded on demand.
 	/// </summary>
+	/// <example>
+	/// <code>
+	/// reader.Filter("Maui &amp; close")     // lines containing both "Maui" and "close"
+	/// reader.Filter("!close")              // lines that do NOT contain "close"
+	/// reader.Filter("error | warning")    // lines containing "error" or "warning"
+	/// reader.Filter("(error | warn) &amp; !debug")
+	/// </code>
+	/// </example>
 	public ImmutableArray<LogInfo> Filter(string query)
 	{
 		ArgumentException.ThrowIfNullOrEmpty(query);
-
-		if (fileLength == 0)
-			return ImmutableArray<LogInfo>.Empty;
-
-		// Encode once and ASCII-fold the needle in place with the same function used on the
-		// haystack, so the search is case-insensitive without allocating a lower-cased string.
-		var utf8Target = Encoding.UTF8.GetBytes(query);
-		for (var i = 0; i < utf8Target.Length; i++)
-			utf8Target[i] = ToLowerAscii(utf8Target[i]);
-
-		return SplitIntoMemoryChunks()
-			.AsParallel()
-			.AsOrdered()
-			.Select(tuple => FilterChunk(tuple.start, tuple.length, utf8Target))
-			.Aggregate(
-				() => new List<LogInfo>(64),
-				(acc, chunk) => { acc.AddRange(chunk); return acc; },
-				(a, b) => { a.AddRange(b); return a; },
-				acc => acc.ToImmutableArray());
+		return Filter(QueryParser.Parse(query));
 	}
 
-	[SkipLocalsInit]
-	List<LogInfo> FilterChunk(long start, int length, byte[] lowerTarget)
+	/// <summary>
+	/// Returns the lines that satisfy <paramref name="query"/>. Results are memoized by the query's
+	/// canonical key, and <c>A &amp; B</c> queries are narrowed to evaluate <c>B</c> only over the
+	/// (cached) lines matching <c>A</c>. See the caching partial for details.
+	/// </summary>
+	public ImmutableArray<LogInfo> Filter(QueryNode query)
 	{
-		var chunkMemory = new UnmanagedMemoryManager<byte>(pointer + start, length).Memory;
-		var span = chunkMemory.Span;
-		ReadOnlySpan<byte> target = lowerTarget;
-
-		var result = new List<LogInfo>(16);
-		var consumed = 0;
-
-		while (consumed < length)
-		{
-			var rest = span.Slice(consumed);
-			var nl = rest.IndexOf(LF);
-
-			int contentLength, advance;
-			if (nl < 0)
-			{
-				contentLength = rest.Length;
-				advance = rest.Length;
-			}
-			else
-			{
-				contentLength = nl;
-				advance = nl + 1;
-			}
-
-			if (contentLength > 0 && rest[contentLength - 1] == CR)
-				contentLength--;
-
-			if (IndexOfIgnoreCaseAscii(rest.Slice(0, contentLength), target) >= 0)
-				result.Add(new LogInfo(chunkMemory.Slice(consumed, contentLength)));
-
-			consumed += advance;
-		}
-
-		return result;
+		ArgumentNullException.ThrowIfNull(query);
+		return EvaluateCached(query);
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -332,3 +293,4 @@ public unsafe sealed partial class LoggerReader : IDisposable
 		GC.SuppressFinalize(this);
 	}
 }
+
