@@ -16,7 +16,7 @@ public partial class App : Application
 	public App()
 	{
 		InitializeComponent();
-		_ = MainThreadManager.MainThreadSwitcher;
+		_ = MainThreadSwitcher;
 	}
 
 	protected override Window CreateWindow(IActivationState? activationState)
