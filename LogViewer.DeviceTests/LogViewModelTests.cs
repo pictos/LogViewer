@@ -8,13 +8,16 @@ namespace LogViewer.DeviceTests;
 public class LogViewModelTests
 {
 	[Test]
-	public void TestVmInit()
+	public async Task TestVmInit()
 	{
 		using var reader = GenerateLoggerReader();
 		var vm = new ViewModels.LogViewModel(reader)
 		{
 			FileName = "app_lorem_ipsum"
 		};
+
+
+		await Task.Delay(200);
 
 		Assert.That(vm.LogSource.GetItemCount(0), Is.EqualTo(3110));
 		Assert.That(reader.FilePath.Contains(vm.FileName));
@@ -26,10 +29,11 @@ public class LogViewModelTests
 		using var reader = GenerateLoggerReader();
 		var vm = new ViewModels.LogViewModel(reader)
 		{
-			FileName = "app_lorem_ipsum"
+			FileName = "app_lorem_ipsum",
+			Query = "info"
 		};
 
-		await vm.FilterCommand.ExecuteAsync("info");
+		await vm.FilterCommand.ExecuteAsync(null);
 		Assert.That(vm.LogSource.GetItemCount(0), Is.EqualTo(668));
 	}
 
@@ -39,9 +43,10 @@ public class LogViewModelTests
 		using var reader = GenerateLoggerReader();
 		var vm = new ViewModels.LogViewModel(reader)
 		{
-			FileName = "app_lorem_ipsum"
+			FileName = "app_lorem_ipsum",
+			Query = "info | debug"
 		};
-		await vm.FilterCommand.ExecuteAsync("info | debug");
+		await vm.FilterCommand.ExecuteAsync(null);
 		Assert.That(vm.LogSource.GetItemCount(0), Is.EqualTo(3011));
 	}
 
@@ -65,11 +70,26 @@ public class LogViewModelTests
 		using var reader = GenerateLoggerReader();
 		var vm = new ViewModels.LogViewModel(reader)
 		{
-			FileName = "app_lorem_ipsum"
+			FileName = "app_lorem_ipsum",
+			Query = "!info & error"
 		};
 
-		await vm.FilterCommand.ExecuteAsync("!info & error");
+		await vm.FilterCommand.ExecuteAsync(null);
 		Assert.That(vm.LogSource.GetItemCount(0), Is.EqualTo(21));
+	}
+
+	[Test]
+	public async Task FilterWithAnd()
+	{
+		using var reader = GenerateLoggerReader();
+		var vm = new ViewModels.LogViewModel(reader)
+		{
+			FileName = "app_lorem_ipsum",
+			Query = "info & error"
+		};
+
+		await vm.FilterCommand.ExecuteAsync(null);
+		Assert.That(vm.LogSource.GetItemCount(0), Is.EqualTo(0));
 	}
 
 	static LoggerReader GenerateLoggerReader()
