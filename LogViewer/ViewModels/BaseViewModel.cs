@@ -1,5 +1,5 @@
 ﻿namespace LogViewer.ViewModels;
 
-abstract partial class BaseViewModel : ObservableObject
+public abstract partial class BaseViewModel : ObservableObject
 {
 }

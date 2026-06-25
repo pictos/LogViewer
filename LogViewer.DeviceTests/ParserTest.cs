@@ -9,39 +9,6 @@ namespace LogViewer.DeviceTests;
 [TestFixture]
 public class ParserTest
 {
-#if WINDOWS
-	// Code from Microsoft.Maui Appinfo.windows.cs
-	static readonly Lazy<bool> _isPackagedAppLazy = new (() =>
-	{
-		try
-		{
-			if (Package.Current is not null)
-				return true;
-		}
-		catch
-		{
-			// no-op
-		}
-
-		return false;
-	});
-
-	/// <summary>
-	/// Gets if this app is a packaged app.
-	/// </summary>
-	public static bool IsPackagedApp => _isPackagedAppLazy.Value;
-	static readonly Lazy<string> platformGetFullAppPackageFilePath = new Lazy<string>(() =>
-	{
-		return IsPackagedApp
-			? Package.Current.InstalledLocation.Path
-			: AppContext.BaseDirectory;
-	});
-
-	static string FullAppPackageFilePath => platformGetFullAppPackageFilePath.Value;
-#else
-// TODO Implement maccatalyst
-#endif
-
 	[Test]
 	public void OpenAndParseTheLog()
 	{
