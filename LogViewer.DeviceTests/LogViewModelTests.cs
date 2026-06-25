@@ -45,7 +45,7 @@ public class LogViewModelTests
 	{
 		var path = FullAppPackageFilePath;
 		var filePath = Path.Combine(path, "app_lorem_ipsum.txt");
-		using var reader = new LoggerReader(filePath);
+		var reader = new LoggerReader(filePath);
 		return reader;
 	}
 }
