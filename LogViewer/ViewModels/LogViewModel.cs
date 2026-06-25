@@ -6,7 +6,7 @@ using System.Diagnostics;
 
 namespace LogViewer.ViewModels;
 
-sealed partial class LogViewModel : BaseViewModel
+public sealed partial class LogViewModel : BaseViewModel
 {
 	readonly LoggerReader reader;
 	IVirtualScrollAdapter? fullText;
