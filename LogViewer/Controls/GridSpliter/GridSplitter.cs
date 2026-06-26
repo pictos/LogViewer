@@ -138,7 +138,7 @@ public sealed partial class GridSplitter : TemplatedView
 		}
 		else
 		{
-			previousRowHeight = UnsafeAccessorClass.GetUnsafeActualWidth(previousRow);
+			previousRowHeight = UnsafeAccessorClass.GetUnsafeActualHeight(previousRow);
 		}
 
 		var actualHeight = previousRowHeight + offsetY;

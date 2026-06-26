@@ -15,11 +15,11 @@ class UnsafeAccessorClass
 	public static extern ref ScrollViewer GetScrollViewer(VirtualScrollHandler handler);
 #endif
 
-	[UnsafeAccessor(UnsafeAccessorKind.StaticMethod, Name = "get_ActualWidth")]
+	[UnsafeAccessor(UnsafeAccessorKind.Method, Name = "get_ActualWidth")]
 	public static extern double GetUnsafeActualWidth(ColumnDefinition definition);
 
-	[UnsafeAccessor(UnsafeAccessorKind.StaticMethod, Name = "get_ActualWidth")]
-	public static extern double GetUnsafeActualWidth(RowDefinition definition);
+	[UnsafeAccessor(UnsafeAccessorKind.Method, Name = "get_ActualHeight")]
+	public static extern double GetUnsafeActualHeight(RowDefinition definition);
 
 	UnsafeAccessorClass() { }
 }
