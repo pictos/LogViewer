@@ -81,20 +81,11 @@ public sealed partial class GridSplitter : TemplatedView
 
 	void OnPanUpdated(object? sender, PanEventArgs e)
 	{
-		var touch = e.Touches[0];
-
 		switch (e.GestureStatus)
 		{
-			case GestureStatus.Started:
-				previousTouchX = touch.X;
-				previousTouchY = touch.Y;
-				break;
 			case GestureStatus.Running:
-				var deltaX = touch.X - previousTouchX;
-				var deltaY = touch.Y - previousTouchY;
-
-				previousTouchX = touch.X;
-				previousTouchY = touch.Y;
+				var deltaX = e.Distance.X;
+				var deltaY = e.Distance.Y;
 
 				UpdateLayout(deltaX, deltaY);
 				break;
