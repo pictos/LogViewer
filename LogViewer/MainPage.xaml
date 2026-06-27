@@ -9,6 +9,8 @@
 			<ColumnDefinition />
 			<ColumnDefinition Width="10" />
 			<ColumnDefinition />
+			<ColumnDefinition Width="10" />
+			<ColumnDefinition />
 		</Grid.ColumnDefinitions>
 		<Grid Grid.Column="0" BackgroundColor="Red">
 			<Label Text="Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat." TextColor="White" />
@@ -16,7 +18,11 @@
 		<Grid Grid.Column="2" BackgroundColor="Green">
 			<Label Text="Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat." TextColor="White" />
 		</Grid>
+		<Grid Grid.Column="4" BackgroundColor="Blue">
+			<Label Text="Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat." TextColor="White" />
+		</Grid>
 		<GridSplitter Grid.Column="1" ResizeDirection="Columns" />
+		<GridSplitter Grid.Column="3" ResizeDirection="Columns" />
 	</Grid>
 
 </ContentPage>
