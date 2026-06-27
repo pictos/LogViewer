@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using PJ.Gestures.Maui;
 
 namespace LogViewer.Controls;
 
@@ -12,7 +13,7 @@ public sealed partial class GridSplitter : TemplatedView
 
 	double previousPositionX;
 	double previousPositionY;
-	PanGestureRecognizer panGesture = new();
+	GestureBehavior gestureBehavior = new();
 
 
 	public static readonly BindableProperty ElementProperty =
@@ -68,30 +69,31 @@ public sealed partial class GridSplitter : TemplatedView
 
 		if (IsEnabled)
 		{
-			panGesture.PanUpdated += OnPanUpdated;
-			gridSplitter.GestureRecognizers.Add(panGesture);
+			gestureBehavior.Pan += OnPanUpdated;
+			gridSplitter.Behaviors.Add(gestureBehavior);
 		}
 		else
 		{
-			panGesture.PanUpdated -= OnPanUpdated;
-			gridSplitter.GestureRecognizers.Remove(panGesture);
+			gestureBehavior.Pan -= OnPanUpdated;
+			gridSplitter.Behaviors.Remove(gestureBehavior);
 		}
 	}
 
-	void OnPanUpdated(object? sender, PanUpdatedEventArgs e)
+	void OnPanUpdated(object? sender, PanEventArgs e)
 	{
-		switch (e.StatusType)
+		switch (e.GestureStatus)
 		{
+			case GestureStatus.Started:
+				previousPositionX = e.Touches[0].X;
+				previousPositionY = e.Touches[0].Y;
+				break;
 			case GestureStatus.Running:
-#if MACCATALYST
-				var totalX = e.TotalX - previousPositionX;
-				var totalY = e.TotalY - previousPositionY;
+				//#if MACCATALYST
+				var totalX = e.Distance.X - previousPositionX;
+				var totalY = e.Distance.Y - previousPositionY;
 				UpdateLayout(totalX, totalY);
-
-				previousPositionX = e.TotalX;
-				previousPositionY = e.TotalY;
-#endif
-				UpdateLayout(e.TotalX, e.TotalY);
+//#endif
+				//UpdateLayout(e.TotalX, e.TotalY);
 				break;
 		}
 	}
