@@ -4,7 +4,7 @@ using System.Runtime.CompilerServices;
 
 namespace LogViewer.Controls;
 
-// from https://github.com/jsuarezruiz/TemplateUI/blob/master/src/TemplateUI/Controls/GridSplitter/GridSplitter.cs
+// based on https://github.com/jsuarezruiz/TemplateUI/blob/master/src/TemplateUI/Controls/GridSplitter/GridSplitter.cs
 public sealed partial class GridSplitter : TemplatedView
 {
 	const string ElementGridSplitter = "PART_GridSplitter";
@@ -124,32 +124,44 @@ public sealed partial class GridSplitter : TemplatedView
 			return;
 		}
 
-		var adjacentRow = grid.RowDefinitions[row + 1];
+		var topRow = grid.RowDefinitions[row - 1];
+		var bottomRow = grid.RowDefinitions[row + 1];
 
-		double adjacentRowHeight;
-
-		if (adjacentRow.Height.IsAbsolute)
+		double topRowHeight;
+		if (topRow.Height.IsAbsolute)
 		{
-			adjacentRowHeight = adjacentRow.Height.Value;
+			topRowHeight = topRow.Height.Value;
 		}
 		else
 		{
-			adjacentRowHeight = GetAdjacentRowHeight(grid, row);
+			topRowHeight = GetRowHeightBefore(grid, row);
 		}
 
-		if (adjacentRowHeight <= 0)
+		double bottomRowHeight;
+		if (bottomRow.Height.IsAbsolute)
+		{
+			bottomRowHeight = bottomRow.Height.Value;
+		}
+		else
+		{
+			bottomRowHeight = GetAdjacentRowHeight(grid, row);
+		}
+
+		if (topRowHeight <= 0 || bottomRowHeight <= 0)
 		{
 			return;
 		}
 
-		var actualHeight = adjacentRowHeight + offsetY;
+		var newTopHeight = topRowHeight + offsetY;
+		var newBottomHeight = bottomRowHeight - offsetY;
 
-		if (actualHeight < 0)
+		if (newTopHeight < 0 || newBottomHeight < 0)
 		{
-			actualHeight = 0;
+			return;
 		}
 
-		adjacentRow.Height = new(actualHeight);
+		topRow.Height = new(newTopHeight);
+		bottomRow.Height = new(newBottomHeight);
 	}
 
 	void UpdateColumns(double offsetX)
@@ -167,42 +179,50 @@ public sealed partial class GridSplitter : TemplatedView
 			return;
 		}
 
-		var adjacentColumn = grid.ColumnDefinitions[column + 1];
-		double adjacentColumnWidth;
+		var leftColumn = grid.ColumnDefinitions[column - 1];
+		var rightColumn = grid.ColumnDefinitions[column + 1];
 
-		if (adjacentColumn.Width.IsAbsolute)
+		double leftColumnWidth;
+		if (leftColumn.Width.IsAbsolute)
 		{
-			adjacentColumnWidth = adjacentColumn.Width.Value;
+			leftColumnWidth = leftColumn.Width.Value;
 		}
 		else
 		{
-			adjacentColumnWidth = GetAdjacentColumnWidth(grid, column);
+			leftColumnWidth = GetColumnWidthBefore(grid, column);
 		}
 
-		if (adjacentColumnWidth <= 0)
+		double rightColumnWidth;
+		if (rightColumn.Width.IsAbsolute)
+		{
+			rightColumnWidth = rightColumn.Width.Value;
+		}
+		else
+		{
+			rightColumnWidth = GetAdjacentColumnWidth(grid, column);
+		}
+
+		if (leftColumnWidth <= 0 || rightColumnWidth <= 0)
 		{
 			return;
 		}
 
-		var actualWidth = adjacentColumnWidth - offsetX;
+		var newLeftWidth = leftColumnWidth + offsetX;
+		var newRightWidth = rightColumnWidth - offsetX;
 
-		if (actualWidth < 0)
+		if (newLeftWidth < 0 || newRightWidth < 0)
 		{
-			actualWidth = 0;
+			return;
 		}
 
-		adjacentColumn.Width = new(actualWidth);
+		leftColumn.Width = new(newLeftWidth);
+		rightColumn.Width = new(newRightWidth);
 	}
 
-	/// <summary>
-	/// Computes the adjacent column's actual width by finding the next splitter
-	/// or the grid's right edge.
-	/// </summary>
 	double GetAdjacentColumnWidth(Grid grid, int splitterColumn)
 	{
 		var splitterRight = Bounds.X + Bounds.Width;
 
-		// Find the next splitter or use the grid edge
 		double nextBoundary = grid.Width;
 		foreach (var child in grid.Children)
 		{
@@ -220,10 +240,24 @@ public sealed partial class GridSplitter : TemplatedView
 		return nextBoundary - splitterRight;
 	}
 
-	/// <summary>
-	/// Computes the adjacent row's actual height by finding the next splitter
-	/// or the grid's bottom edge.
-	/// </summary>
+	double GetColumnWidthBefore(Grid grid, int splitterColumn)
+	{
+		double previousBoundary = 0;
+		foreach (var child in grid.Children)
+		{
+			if (child is GridSplitter other && other != this)
+			{
+				var otherColumn = Grid.GetColumn(other);
+				if (otherColumn < splitterColumn)
+				{
+					previousBoundary = other.Bounds.X + other.Bounds.Width;
+				}
+			}
+		}
+
+		return Bounds.X - previousBoundary;
+	}
+
 	double GetAdjacentRowHeight(Grid grid, int splitterRow)
 	{
 		var splitterBottom = Bounds.Y + Bounds.Height;
@@ -244,5 +278,23 @@ public sealed partial class GridSplitter : TemplatedView
 		}
 
 		return nextBoundary - splitterBottom;
+	}
+
+	double GetRowHeightBefore(Grid grid, int splitterRow)
+	{
+		double previousBoundary = 0;
+		foreach (var child in grid.Children)
+		{
+			if (child is GridSplitter other && other != this)
+			{
+				var otherRow = Grid.GetRow(other);
+				if (otherRow < splitterRow)
+				{
+					previousBoundary = other.Bounds.Y + other.Bounds.Height;
+				}
+			}
+		}
+
+		return Bounds.Y - previousBoundary;
 	}
 }
