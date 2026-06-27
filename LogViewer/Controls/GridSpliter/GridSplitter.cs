@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using PJ.Gestures.Maui;
 
@@ -11,8 +11,8 @@ public sealed partial class GridSplitter : TemplatedView
 
 	Grid? gridSplitter;
 
-	double previousPositionX;
-	double previousPositionY;
+	double previousTouchX;
+	double previousTouchY;
 	GestureBehavior gestureBehavior = new();
 
 
@@ -81,19 +81,22 @@ public sealed partial class GridSplitter : TemplatedView
 
 	void OnPanUpdated(object? sender, PanEventArgs e)
 	{
+		var touch = e.Touches[0];
+
 		switch (e.GestureStatus)
 		{
 			case GestureStatus.Started:
-				previousPositionX = e.Touches[0].X;
-				previousPositionY = e.Touches[0].Y;
+				previousTouchX = touch.X;
+				previousTouchY = touch.Y;
 				break;
 			case GestureStatus.Running:
-				//#if MACCATALYST
-				var totalX = e.Distance.X - previousPositionX;
-				var totalY = e.Distance.Y - previousPositionY;
-				UpdateLayout(totalX, totalY);
-//#endif
-				//UpdateLayout(e.TotalX, e.TotalY);
+				var deltaX = touch.X - previousTouchX;
+				var deltaY = touch.Y - previousTouchY;
+
+				previousTouchX = touch.X;
+				previousTouchY = touch.Y;
+
+				UpdateLayout(deltaX, deltaY);
 				break;
 		}
 	}
@@ -181,7 +184,7 @@ public sealed partial class GridSplitter : TemplatedView
 			previousRowWidth = UnsafeAccessorClass.GetUnsafeActualWidth(previousColumn);
 		}
 
-		var actualWidth = previousRowWidth + offsetX;
+		var actualWidth = previousRowWidth - offsetX;
 
 		if (actualWidth < 0)
 		{
