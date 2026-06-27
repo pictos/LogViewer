@@ -1,6 +1,6 @@
+using PJ.Gestures.Maui;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using PJ.Gestures.Maui;
 
 namespace LogViewer.Controls;
 
@@ -119,7 +119,7 @@ public sealed partial class GridSplitter : TemplatedView
 		var row = Grid.GetRow(this);
 		var rowCount = grid.RowDefinitions.Count;
 
-		if (rowCount <= 1 || row is 0 || row ==  rowCount - 1)
+		if (rowCount <= 1 || row is 0 || row == rowCount - 1)
 		{
 			return;
 		}
