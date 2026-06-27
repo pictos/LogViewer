@@ -1,0 +1,300 @@
+using PJ.Gestures.Maui;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
+
+namespace LogViewer.Controls;
+
+// based on https://github.com/jsuarezruiz/TemplateUI/blob/master/src/TemplateUI/Controls/GridSplitter/GridSplitter.cs
+public sealed partial class GridSplitter : TemplatedView
+{
+	const string ElementGridSplitter = "PART_GridSplitter";
+
+	Grid? gridSplitter;
+
+	double previousTouchX;
+	double previousTouchY;
+	GestureBehavior gestureBehavior = new();
+
+
+	public static readonly BindableProperty ElementProperty =
+		BindableProperty.Create(nameof(Element), typeof(View), typeof(GridSplitter), null);
+
+	public View Element
+	{
+		get => (View)GetValue(ElementProperty);
+		set => SetValue(ElementProperty, value);
+	}
+
+
+	public static readonly BindableProperty ResizeDirectionProperty =
+		BindableProperty.Create(nameof(ResizeDirection), typeof(GridResizeDirection), typeof(GridSplitter), GridResizeDirection.Auto);
+
+	public GridResizeDirection ResizeDirection
+	{
+		get => (GridResizeDirection)GetValue(ResizeDirectionProperty);
+		set => SetValue(ResizeDirectionProperty, value);
+	}
+
+	protected override void OnApplyTemplate()
+	{
+		base.OnApplyTemplate();
+
+		gridSplitter = (Grid)GetTemplateChild(ElementGridSplitter);
+
+		Debug.Assert(gridSplitter is not null);
+
+		UpdateIsEnabled();
+	}
+
+	protected override void OnPropertyChanged([CallerMemberName] string propertyName = null)
+	{
+		base.OnPropertyChanged(propertyName);
+
+		if (propertyName == nameof(ResizeDirection))
+		{
+			UpdateLayout();
+		}
+		else if (propertyName == nameof(IsEnabled))
+		{
+			UpdateIsEnabled();
+		}
+	}
+
+	void UpdateIsEnabled()
+	{
+		if (gridSplitter is null)
+		{
+			return;
+		}
+
+		if (IsEnabled)
+		{
+			gestureBehavior.Pan += OnPanUpdated;
+			gridSplitter.Behaviors.Add(gestureBehavior);
+		}
+		else
+		{
+			gestureBehavior.Pan -= OnPanUpdated;
+			gridSplitter.Behaviors.Remove(gestureBehavior);
+		}
+	}
+
+	void OnPanUpdated(object? sender, PanEventArgs e)
+	{
+		switch (e.GestureStatus)
+		{
+			case GestureStatus.Running:
+				var deltaX = e.Distance.X;
+				var deltaY = e.Distance.Y;
+
+				UpdateLayout(deltaX, deltaY);
+				break;
+		}
+	}
+
+	void UpdateLayout(double offsetX = 0, double offsetY = 0)
+	{
+		if (Parent is not Grid)
+		{
+			return;
+		}
+
+		if (ResizeDirection == GridResizeDirection.Columns)
+		{
+			UpdateColumns(offsetX);
+		}
+		else
+		{
+			UpdateRows(offsetY);
+		}
+	}
+
+	void UpdateRows(double offsetY)
+	{
+		if (offsetY is 0 || Parent is not Grid grid)
+		{
+			return;
+		}
+
+		var row = Grid.GetRow(this);
+		var rowCount = grid.RowDefinitions.Count;
+
+		if (rowCount <= 1 || row is 0 || row >= rowCount - 1)
+		{
+			return;
+		}
+
+		var topRow = grid.RowDefinitions[row - 1];
+		var bottomRow = grid.RowDefinitions[row + 1];
+
+		double topRowHeight;
+		if (topRow.Height.IsAbsolute)
+		{
+			topRowHeight = topRow.Height.Value;
+		}
+		else
+		{
+			topRowHeight = GetRowHeightBefore(grid, row);
+		}
+
+		double bottomRowHeight;
+		if (bottomRow.Height.IsAbsolute)
+		{
+			bottomRowHeight = bottomRow.Height.Value;
+		}
+		else
+		{
+			bottomRowHeight = GetAdjacentRowHeight(grid, row);
+		}
+
+		if (topRowHeight <= 0 || bottomRowHeight <= 0)
+		{
+			return;
+		}
+
+		var newTopHeight = topRowHeight + offsetY;
+		var newBottomHeight = bottomRowHeight - offsetY;
+
+		if (newTopHeight < 0 || newBottomHeight < 0)
+		{
+			return;
+		}
+
+		topRow.Height = new(newTopHeight);
+		bottomRow.Height = new(newBottomHeight);
+	}
+
+	void UpdateColumns(double offsetX)
+	{
+		if (offsetX is 0 || Parent is not Grid grid)
+		{
+			return;
+		}
+
+		var column = Grid.GetColumn(this);
+		var columnCount = grid.ColumnDefinitions.Count;
+
+		if (columnCount <= 1 || column is 0 || column >= columnCount - 1)
+		{
+			return;
+		}
+
+		var leftColumn = grid.ColumnDefinitions[column - 1];
+		var rightColumn = grid.ColumnDefinitions[column + 1];
+
+		double leftColumnWidth;
+		if (leftColumn.Width.IsAbsolute)
+		{
+			leftColumnWidth = leftColumn.Width.Value;
+		}
+		else
+		{
+			leftColumnWidth = GetColumnWidthBefore(grid, column);
+		}
+
+		double rightColumnWidth;
+		if (rightColumn.Width.IsAbsolute)
+		{
+			rightColumnWidth = rightColumn.Width.Value;
+		}
+		else
+		{
+			rightColumnWidth = GetAdjacentColumnWidth(grid, column);
+		}
+
+		if (leftColumnWidth <= 0 || rightColumnWidth <= 0)
+		{
+			return;
+		}
+
+		var newLeftWidth = leftColumnWidth + offsetX;
+		var newRightWidth = rightColumnWidth - offsetX;
+
+		if (newLeftWidth < 0 || newRightWidth < 0)
+		{
+			return;
+		}
+
+		leftColumn.Width = new(newLeftWidth);
+		rightColumn.Width = new(newRightWidth);
+	}
+
+	double GetAdjacentColumnWidth(Grid grid, int splitterColumn)
+	{
+		var splitterRight = Bounds.X + Bounds.Width;
+
+		double nextBoundary = grid.Width;
+		foreach (var child in grid.Children)
+		{
+			if (child is GridSplitter other && other != this)
+			{
+				var otherColumn = Grid.GetColumn(other);
+				if (otherColumn > splitterColumn)
+				{
+					nextBoundary = other.Bounds.X;
+					break;
+				}
+			}
+		}
+
+		return nextBoundary - splitterRight;
+	}
+
+	double GetColumnWidthBefore(Grid grid, int splitterColumn)
+	{
+		double previousBoundary = 0;
+		foreach (var child in grid.Children)
+		{
+			if (child is GridSplitter other && other != this)
+			{
+				var otherColumn = Grid.GetColumn(other);
+				if (otherColumn < splitterColumn)
+				{
+					previousBoundary = other.Bounds.X + other.Bounds.Width;
+				}
+			}
+		}
+
+		return Bounds.X - previousBoundary;
+	}
+
+	double GetAdjacentRowHeight(Grid grid, int splitterRow)
+	{
+		var splitterBottom = Bounds.Y + Bounds.Height;
+
+		// Find the next splitter or use the grid edge
+		double nextBoundary = grid.Height;
+		foreach (var child in grid.Children)
+		{
+			if (child is GridSplitter other && other != this)
+			{
+				var otherRow = Grid.GetRow(other);
+				if (otherRow > splitterRow)
+				{
+					nextBoundary = other.Bounds.Y;
+					break;
+				}
+			}
+		}
+
+		return nextBoundary - splitterBottom;
+	}
+
+	double GetRowHeightBefore(Grid grid, int splitterRow)
+	{
+		double previousBoundary = 0;
+		foreach (var child in grid.Children)
+		{
+			if (child is GridSplitter other && other != this)
+			{
+				var otherRow = Grid.GetRow(other);
+				if (otherRow < splitterRow)
+				{
+					previousBoundary = other.Bounds.Y + other.Bounds.Height;
+				}
+			}
+		}
+
+		return Bounds.Y - previousBoundary;
+	}
+}
