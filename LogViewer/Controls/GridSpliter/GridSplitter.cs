@@ -143,7 +143,12 @@ public sealed partial class GridSplitter : TemplatedView
 		}
 		else
 		{
-			previousRowHeight = UnsafeAccessorClass.GetUnsafeActualHeight(previousRow);
+			previousRowHeight = grid.Height - Bounds.Y - Bounds.Height;
+		}
+
+		if (previousRowHeight <= 0)
+		{
+			return;
 		}
 
 		var actualHeight = previousRowHeight + offsetY;
@@ -181,7 +186,12 @@ public sealed partial class GridSplitter : TemplatedView
 		}
 		else
 		{
-			previousRowWidth = UnsafeAccessorClass.GetUnsafeActualWidth(previousColumn);
+			previousRowWidth = grid.Width - Bounds.X - Bounds.Width;
+		}
+
+		if (previousRowWidth <= 0)
+		{
+			return;
 		}
 
 		var actualWidth = previousRowWidth - offsetX;
