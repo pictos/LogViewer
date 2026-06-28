@@ -16,6 +16,6 @@
 		</MenuBarItem>
 	</Shell.MenuBarItems>
 
-	<!--<ShellContent ContentTemplate="{DataTemplate LogPage}" Route="LogPage" />-->
-	<ShellContent ContentTemplate="{DataTemplate MainPage}" Route="LogPage" />
+	<ShellContent ContentTemplate="{DataTemplate LogPage}" Route="LogPage" />
+	<!--<ShellContent ContentTemplate="{DataTemplate MainPage}" Route="LogPage" />-->
 </Shell>

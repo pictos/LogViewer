@@ -10,12 +10,32 @@ namespace LogViewer.DeviceTests;
 public class QueryTests
 {
 	static string LogFilePath { get; } = Path.Combine(BasePath, "app_lorem_ipsum.txt");
+	static readonly ReadOnlyMemory<byte>[] BooleanTruthTableInputs =
+	[
+		""u8.ToArray(),
+		"info"u8.ToArray(),
+		"debug"u8.ToArray(),
+		"error"u8.ToArray(),
+		"info debug"u8.ToArray(),
+		"info error"u8.ToArray(),
+		"debug error"u8.ToArray(),
+		"info debug error"u8.ToArray()
+	];
 
 	static void AssertSameLines(ImmutableArray<LogInfo> expected, ImmutableArray<LogInfo> actual)
 	{
 		Assert.That(actual.Length, Is.EqualTo(expected.Length));
 		for (var i = 0; i < expected.Length; i++)
 			Assert.That(actual[i].Text, Is.EqualTo(expected[i].Text), $"Mismatch at index {i}");
+	}
+
+	static bool[] EvaluateTruthTable(string query)
+	{
+		var node = QueryParser.Parse(query);
+		var results = new bool[BooleanTruthTableInputs.Length];
+		for (var i = 0; i < BooleanTruthTableInputs.Length; i++)
+			results[i] = node.Matches(BooleanTruthTableInputs[i].Span);
+		return results;
 	}
 
 	[Test]
@@ -121,5 +141,35 @@ public class QueryTests
 		var second = reader.Filter(query);
 
 		AssertSameLines(first, second);
+	}
+
+	[TestCase("!(info & debug)", "!info | !debug")]
+	[TestCase("!(info | debug)", "!info & !debug")]
+	[TestCase("info & (debug | error)", "(info & debug) | (info & error)")]
+	[TestCase("!!info", "info")]
+	[TestCase("info & debug", "debug & info")]
+	[TestCase("info | debug", "debug | info")]
+	public void Parse_BooleanConstructionsThatShouldBeEquivalent_AreEquivalent(string left, string right)
+	{
+		Assert.That(EvaluateTruthTable(left), Is.EqualTo(EvaluateTruthTable(right)));
+	}
+
+	[Test]
+	public void Parse_BooleanConstructionsThatShouldDiffer_AreNotEquivalent()
+	{
+		Assert.That(
+			EvaluateTruthTable("!info & !debug"),
+			Is.Not.EqualTo(EvaluateTruthTable("!(info & debug)")));
+	}
+
+	[TestCase("!(info & debug)", "!info | !debug")]
+	[TestCase("!(info | debug)", "!info & !debug")]
+	[TestCase("!!info", "info")]
+	public void Filter_EquivalentBooleanConstructionsReturnSameResults(string left, string right)
+	{
+		using var reader = new LoggerReader(LogFilePath);
+		reader.Process();
+
+		AssertSameLines(reader.Filter(left), reader.Filter(right));
 	}
 }
