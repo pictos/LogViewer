@@ -19,14 +19,14 @@ public abstract class QueryNode
 /// <summary>Matches lines that contain the literal <paramref name="term"/> (case-insensitive ASCII).</summary>
 public sealed class TermNode : QueryNode
 {
-	readonly byte[] _lowerUtf8;
+	readonly byte[] lowerUtf8;
 
 	public TermNode(string term)
 	{
 		var bytes = Encoding.UTF8.GetBytes(term);
 		for (var i = 0; i < bytes.Length; i++)
 			bytes[i] = LoggerReader.ToLowerAscii(bytes[i]);
-		_lowerUtf8 = bytes;
+		lowerUtf8 = bytes;
 
 		// Case-insensitive matching means "Info" and "info" are the same predicate.
 		Key = term.ToLowerInvariant();
@@ -36,7 +36,7 @@ public sealed class TermNode : QueryNode
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public override bool Matches(ReadOnlySpan<byte> line) =>
-		LoggerReader.IndexOfIgnoreCaseAscii(line, _lowerUtf8) >= 0;
+		LoggerReader.IndexOfIgnoreCaseAscii(line, lowerUtf8) >= 0;
 }
 
 /// <summary>Matches lines where both operands match (short-circuits on first failure).</summary>
@@ -91,10 +91,10 @@ public sealed class NotNode(QueryNode operand) : QueryNode
 /// </summary>
 public sealed class QueryParser
 {
-	readonly string _input;
-	int _pos;
+	readonly string input;
+	int pos;
 
-	QueryParser(string input) => _input = input;
+	QueryParser(string input) => this.input = input;
 
 	/// <summary>Parses <paramref name="query"/> and returns the root <see cref="QueryNode"/>.</summary>
 	/// <exception cref="FormatException">Thrown when the query is syntactically invalid.</exception>
@@ -104,16 +104,16 @@ public sealed class QueryParser
 		var parser = new QueryParser(query.Trim());
 		var node = parser.ParseOr();
 		parser.SkipWhitespace();
-		if (parser._pos < parser._input.Length)
+		if (parser.pos < parser.input.Length)
 			throw new FormatException(
-				$"Unexpected character '{parser._input[parser._pos]}' at position {parser._pos}.");
+				$"Unexpected character '{parser.input[parser.pos]}' at position {parser.pos}.");
 		return node;
 	}
 
 	void SkipWhitespace()
 	{
-		while (_pos < _input.Length && char.IsWhiteSpace(_input[_pos]))
-			_pos++;
+		while (pos < input.Length && char.IsWhiteSpace(input[pos]))
+			pos++;
 	}
 
 	// expr = or_expr
@@ -124,8 +124,8 @@ public sealed class QueryParser
 		while (true)
 		{
 			SkipWhitespace();
-			if (_pos >= _input.Length || _input[_pos] != '|') break;
-			_pos++;
+			if (pos >= input.Length || input[pos] != '|') break;
+			pos++;
 			left = new OrNode(left, ParseAnd());
 		}
 		return left;
@@ -138,8 +138,8 @@ public sealed class QueryParser
 		while (true)
 		{
 			SkipWhitespace();
-			if (_pos >= _input.Length || _input[_pos] != '&') break;
-			_pos++;
+			if (pos >= input.Length || input[pos] != '&') break;
+			pos++;
 			left = new AndNode(left, ParseUnary());
 		}
 		return left;
@@ -149,9 +149,9 @@ public sealed class QueryParser
 	QueryNode ParseUnary()
 	{
 		SkipWhitespace();
-		if (_pos < _input.Length && _input[_pos] == '!')
+		if (pos < input.Length && input[pos] == '!')
 		{
-			_pos++;
+			pos++;
 			return new NotNode(ParseUnary());
 		}
 		return ParsePrimary();
@@ -161,14 +161,14 @@ public sealed class QueryParser
 	QueryNode ParsePrimary()
 	{
 		SkipWhitespace();
-		if (_pos < _input.Length && _input[_pos] == '(')
+		if (pos < input.Length && input[pos] == '(')
 		{
-			_pos++;
+			pos++;
 			var inner = ParseOr();
 			SkipWhitespace();
-			if (_pos >= _input.Length || _input[_pos] != ')')
+			if (pos >= input.Length || input[pos] != ')')
 				throw new FormatException("Missing closing ')'.");
-			_pos++;
+			pos++;
 			return inner;
 		}
 		return ParseTerm();
@@ -178,29 +178,29 @@ public sealed class QueryParser
 	QueryNode ParseTerm()
 	{
 		SkipWhitespace();
-		if (_pos >= _input.Length)
+		if (pos >= input.Length)
 			throw new FormatException("Expected a search term but reached end of query.");
 
-		if (_input[_pos] == '"')
+		if (input[pos] == '"')
 		{
-			_pos++;
-			var start = _pos;
-			while (_pos < _input.Length && _input[_pos] != '"')
-				_pos++;
-			if (_pos >= _input.Length)
+			pos++;
+			var start = pos;
+			while (pos < input.Length && input[pos] != '"')
+				pos++;
+			if (pos >= input.Length)
 				throw new FormatException("Unclosed quoted string.");
-			var value = _input[start.._pos];
-			_pos++; // consume closing "
+			var value = input[start..pos];
+			pos++; // consume closing "
 			if (value.Length == 0)
 				throw new FormatException("Empty quoted term is not allowed.");
 			return new TermNode(value);
 		}
 
-		var termStart = _pos;
-		while (_pos < _input.Length && !IsTermStop(_input[_pos]))
-			_pos++;
+		var termStart = pos;
+		while (pos < input.Length && !IsTermStop(input[pos]))
+			pos++;
 
-		var term = _input[termStart.._pos].Trim();
+		var term = input[termStart..pos].Trim();
 		if (term.Length == 0)
 			throw new FormatException($"Expected a search term at position {termStart}.");
 
