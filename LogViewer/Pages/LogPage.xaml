@@ -10,12 +10,14 @@
 		x:FieldModifier="internal"
 		RowDefinitions="auto, *">
 
-		<FlexLayout
-			x:Name="tabsLayout"
-			Padding="5,0"
-			x:FieldModifier="internal"
-			FlexLayout.Shrink="0.25"
-			Wrap="NoWrap" />
+		<ScrollView Orientation="Horizontal" VerticalScrollBarVisibility="Never">
+			<FlexLayout
+				x:Name="tabsLayout"
+				Padding="5,0"
+				x:FieldModifier="internal"
+				FlexLayout.Shrink="0.25"
+				Wrap="NoWrap" />
+		</ScrollView>
 
 		<!--  LoggerContent will be added programatically  -->
 	</Grid>
