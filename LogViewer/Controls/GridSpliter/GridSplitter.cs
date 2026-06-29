@@ -168,8 +168,61 @@ public sealed partial class GridSplitter : TemplatedView
 			return;
 		}
 
-		topRow.Height = new(newTopHeight);
-		bottomRow.Height = new(newBottomHeight);
+		NormalizeStarRows(grid, row - 1, row + 1);
+
+		topRow.Height = new(newTopHeight, GridUnitType.Star);
+		bottomRow.Height = new(newBottomHeight, GridUnitType.Star);
+	}
+
+	static void NormalizeStarRows(Grid grid, int skipFirst, int skipSecond)
+	{
+		var size = grid.RowDefinitions.Count;
+		for (var i = 0; i < size; i++)
+		{
+			if (i == skipFirst || i == skipSecond)
+			{
+				continue;
+			}
+
+			var definition = grid.RowDefinitions[i];
+			if (!definition.Height.IsStar)
+			{
+				continue;
+			}
+
+			var actualHeight = GetActualRowHeight(grid, i);
+			if (actualHeight > 0)
+			{
+				definition.Height = new(actualHeight, GridUnitType.Star);
+			}
+		}
+	}
+
+	static double GetActualRowHeight(Grid grid, int rowIndex)
+	{
+		double topBoundary = 0;
+		var bottomBoundary = grid.Height;
+
+		foreach (var child in grid.Children)
+		{
+			if (child is not GridSplitter other)
+			{
+				continue;
+			}
+
+			var otherRow = Grid.GetRow(other);
+			var otherBottom = other.Bounds.Y + other.Bounds.Height;
+			if (otherRow < rowIndex && otherBottom > topBoundary)
+			{
+				topBoundary = otherBottom;
+			}
+			else if (otherRow > rowIndex && other.Bounds.Y < bottomBoundary)
+			{
+				bottomBoundary = other.Bounds.Y;
+			}
+		}
+
+		return bottomBoundary - topBoundary;
 	}
 
 	void UpdateColumns(double offsetX)
@@ -223,8 +276,61 @@ public sealed partial class GridSplitter : TemplatedView
 			return;
 		}
 
-		leftColumn.Width = new(newLeftWidth);
-		rightColumn.Width = new(newRightWidth);
+		NormalizeStarColumns(grid, column - 1, column + 1);
+
+		leftColumn.Width = new(newLeftWidth, GridUnitType.Star);
+		rightColumn.Width = new(newRightWidth, GridUnitType.Star);
+	}
+
+	static void NormalizeStarColumns(Grid grid, int skipFirst, int skipSecond)
+	{
+		var size = grid.ColumnDefinitions.Count;
+		for (var i = 0; i < size; i++)
+		{
+			if (i == skipFirst || i == skipSecond)
+			{
+				continue;
+			}
+
+			var definition = grid.ColumnDefinitions[i];
+			if (!definition.Width.IsStar)
+			{
+				continue;
+			}
+
+			var actualWidth = GetActualColumnWidth(grid, i);
+			if (actualWidth > 0)
+			{
+				definition.Width = new(actualWidth, GridUnitType.Star);
+			}
+		}
+	}
+
+	static double GetActualColumnWidth(Grid grid, int columnIndex)
+	{
+		double leftBoundary = 0;
+		var rightBoundary = grid.Width;
+
+		foreach (var child in grid.Children)
+		{
+			if (child is not GridSplitter other)
+			{
+				continue;
+			}
+
+			var otherColumn = Grid.GetColumn(other);
+			var otherRight = other.Bounds.X + other.Bounds.Width;
+			if (otherColumn < columnIndex && otherRight > leftBoundary)
+			{
+				leftBoundary = otherRight;
+			}
+			else if (otherColumn > columnIndex && other.Bounds.X < rightBoundary)
+			{
+				rightBoundary = other.Bounds.X;
+			}
+		}
+
+		return rightBoundary - leftBoundary;
 	}
 
 	double GetAdjacentColumnWidth(Grid grid, int splitterColumn)
