@@ -14,8 +14,9 @@ public partial class TabView
 		var tabView = (TabView)sender;
 		var logPage = (LogPage)Shell.Current.CurrentPage;
 
-		logPage.HideAllTabs();
-
-		tabView.LogView.IsVisible = true;
+		if (tabView.LogView.Group is { } group)
+		{
+			logPage.ShowGroup(group);
+		}
 	}
 }

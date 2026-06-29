@@ -6,81 +6,81 @@ public static class PageExtensions
 {
 	extension(LogPage page)
 	{
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public void HideAllTabs()
+		public void HideAllGroups()
 		{
-			foreach (var tab in page.tabsLayout.Children.Cast<TabView>())
+			foreach (var group in page.mainLayout.Children.OfType<SideBySideContent>())
 			{
-				tab.LogView.IsVisible = false;
+				group.IsVisible = false;
 			}
+		}
+
+		public void ShowGroup(SideBySideContent group)
+		{
+			page.HideAllGroups();
+			group.IsVisible = true;
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public void AddTabView(TabView tabView) =>
 			page.tabsLayout.Add(tabView);
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public void AddLogView(LogView logView)
+		public void OpenLog(TabView tabView)
 		{
-			Grid.SetRow(logView, 1);
-			page.mainLayout.Add(logView);
-		}
+			var group = new SideBySideContent();
+			Grid.SetRow(group, 1);
+			page.mainLayout.Add(group);
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public void RemoveLogView(TabView tabView)
-		{
-			var logView = tabView.LogView;
-			page.tabsLayout.Remove(tabView);
-
-			if (!logView.IsSideBySide)
-			{
-				page.mainLayout.Remove(logView);
-				return;
-			}
-
-			logView.RemoveFromParent();
+			page.AddTabView(tabView);
+			group.AddLog(tabView.LogView);
+			page.ShowGroup(group);
 		}
 
 		public void OpenLogInSide(TabView tabView)
 		{
-			var visibleView = page.tabsLayout.Cast<TabView>().FirstOrDefault(x => x.IsVisible);
-
-			var logView = tabView.LogView;
-			page.AddTabView(tabView);
-			if (visibleView is null)
+			var group = page.mainLayout.Children.OfType<SideBySideContent>().FirstOrDefault(g => g.IsVisible);
+			if (group is null)
 			{
-				page.AddLogView(logView);
+				page.OpenLog(tabView);
 				return;
 			}
 
-			var dock = visibleView.LogView.dock;
-			dock.Add(logView);
-			visibleView.LogView.IsSideBySide = logView.IsSideBySide = true;
-		}
-	}
-
-	extension(View view)
-	{
-		public void RemoveFromParent()
-		{
-			var element = GetParentLayout(view);
-			element.Remove(view);
+			page.AddTabView(tabView);
+			group.AddLog(tabView.LogView);
 		}
 
-		public Layout GetParentLayout()
+		public void RemoveLogView(TabView tabView)
 		{
-			var parent = view.Parent;
-			if (parent is Layout l)
+			var logView = tabView.LogView;
+			var group = logView.Group;
+
+			if (group is null || logView.IsMain)
 			{
-				return l;
+				page.CloseGroup(group);
+				return;
 			}
 
-			while (parent is not Layout)
+			group.RemoveLog(logView);
+			page.tabsLayout.Remove(tabView);
+		}
+
+		void CloseGroup(SideBySideContent? group)
+		{
+			if (group is null)
 			{
-				parent = parent.Parent;
+				return;
 			}
 
-			return (Layout)parent;
+			var tabs = page.tabsLayout.Children
+				.OfType<TabView>()
+				.Where(t => t.LogView.Group == group)
+				.ToArray();
+
+			foreach (var tab in tabs)
+			{
+				page.tabsLayout.Remove(tab);
+			}
+
+			page.mainLayout.Remove(group);
 		}
 	}
 }
