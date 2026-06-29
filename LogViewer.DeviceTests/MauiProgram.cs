@@ -12,6 +12,9 @@ public static class MauiProgram
 		var builder = MauiApp.CreateBuilder();
 		builder
 			.UseVisualTestRunner(conf => conf
+#if CI
+				.AddCliConfiguration()
+#endif
 				.AddNUnit()
 				.AddConsoleResultChannel()
 				.AddResourceDictionary<Resources.Styles.Colors>()

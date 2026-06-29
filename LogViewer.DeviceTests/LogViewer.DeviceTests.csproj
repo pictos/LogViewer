@@ -45,6 +45,7 @@
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.9" />
 		<PackageReference Include="DeviceRunners.VisualRunners.Maui" Version="$(DeviceRunnersVersion)" />
 		<PackageReference Include="DeviceRunners.VisualRunners.NUnit" Version="$(DeviceRunnersVersion)" />
+		<PackageReference Include="DeviceRunners.Testing.Targets" Version="$(DeviceRunnersVersion)" />
 		<PackageReference Include="NUnit" Version="4.5.1" />
 	</ItemGroup>
 
