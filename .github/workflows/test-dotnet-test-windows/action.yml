@@ -70,6 +70,7 @@ runs:
         dotnet test ${{ inputs.test-project }} `
           -f ${{ inputs.target-framework }} `
           -c ${{ inputs.configuration }} `
+          -p:IsCI=true `
           --filter "Category!=ExpectedFailure" `
           --logger "trx;LogFileName=test-results.trx" `
           --results-directory .\artifacts\test-results `
