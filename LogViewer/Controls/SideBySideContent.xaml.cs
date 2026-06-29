@@ -4,8 +4,8 @@ namespace LogViewer.Controls;
 
 public partial class SideBySideContent
 {
-	const double SplitterWidth = 10;
-
+	const double SplitterWidth = 5;
+	static readonly Color gridSplitterColor = Color.FromArgb("#6F6F6F");
 	public SideBySideViewModel ViewModel { get; } = new();
 
 	public SideBySideContent()
@@ -31,7 +31,13 @@ public partial class SideBySideContent
 		}
 		else
 		{
-			var splitter = new GridSplitter { ResizeDirection = GridResizeDirection.Columns };
+			var splitter = new GridSplitter
+			{
+				ResizeDirection = GridResizeDirection.Columns,
+				Background = gridSplitterColor,
+			};
+
+			splitter.SetDynamicResource(VisualElement.StyleProperty, "GridSplitterStyle");
 			var splitterColumn = columns.ColumnDefinitions.Count;
 			columns.ColumnDefinitions.Add(new ColumnDefinition(SplitterWidth));
 			columns.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));

@@ -20,5 +20,7 @@
 	<Grid
 		x:Name="columns"
 		Grid.Row="1"
-		x:FieldModifier="internal" />
+		Padding="5"
+		x:FieldModifier="internal"
+		ColumnSpacing="5" />
 </Grid>
