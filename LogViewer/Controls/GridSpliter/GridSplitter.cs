@@ -11,8 +11,6 @@ public sealed partial class GridSplitter : TemplatedView
 
 	Grid? gridSplitter;
 
-	double previousTouchX;
-	double previousTouchY;
 	GestureBehavior gestureBehavior = new();
 
 
