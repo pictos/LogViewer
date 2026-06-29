@@ -35,6 +35,16 @@ public sealed partial class GridSplitter : TemplatedView
 		set => SetValue(ResizeDirectionProperty, value);
 	}
 
+	public GridSplitter()
+	{
+		var cursorBehavior = new MouseCursorPlatformBehavior
+		{
+			HoverCursor = Models.MouseCursor.SizeWestEast
+		};
+
+		Behaviors.Add(cursorBehavior);
+	}
+
 	protected override void OnApplyTemplate()
 	{
 		base.OnApplyTemplate();
