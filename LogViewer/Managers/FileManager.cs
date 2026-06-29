@@ -13,7 +13,7 @@ static class FileManager
 
 	public static void OpenFile(FileResult fileResult)
 	{
-		Debug.Assert(fileResult is not null);
+		Assert(fileResult is not null);
 
 		var reader = new LoggerReader(fileResult.FullPath);
 		//readers.TryAdd(fileResult, reader);

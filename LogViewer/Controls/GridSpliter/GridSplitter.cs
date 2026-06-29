@@ -1,5 +1,5 @@
+using LogViewer.Controls.Behaviors;
 using PJ.Gestures.Maui;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace LogViewer.Controls;
@@ -11,8 +11,6 @@ public sealed partial class GridSplitter : TemplatedView
 
 	Grid? gridSplitter;
 
-	double previousTouchX;
-	double previousTouchY;
 	GestureBehavior gestureBehavior = new();
 
 
@@ -35,18 +33,28 @@ public sealed partial class GridSplitter : TemplatedView
 		set => SetValue(ResizeDirectionProperty, value);
 	}
 
+	public GridSplitter()
+	{
+		var cursorBehavior = new MouseCursorPlatformBehavior
+		{
+			HoverCursor = Models.MouseCursor.SizeWestEast
+		};
+
+		Behaviors.Add(cursorBehavior);
+	}
+
 	protected override void OnApplyTemplate()
 	{
 		base.OnApplyTemplate();
 
 		gridSplitter = (Grid)GetTemplateChild(ElementGridSplitter);
 
-		Debug.Assert(gridSplitter is not null);
+		Assert(gridSplitter is not null);
 
 		UpdateIsEnabled();
 	}
 
-	protected override void OnPropertyChanged([CallerMemberName] string propertyName = null)
+	protected override void OnPropertyChanged([CallerMemberName] string? propertyName = null)
 	{
 		base.OnPropertyChanged(propertyName);
 
