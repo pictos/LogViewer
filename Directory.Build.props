@@ -10,7 +10,7 @@
 		<Nullable>enable</Nullable>
 
 		<IsDeviceTestProject Condition="'$(IsDeviceTestProject)' == ''">False</IsDeviceTestProject>
-
+		<IsCI Condition="'$(IsCI)' == ''">False</IsCI>
 
 		<!-- Enable XAML source generation for faster build times and improved performance.
 		     This generates C# code from XAML at compile time instead of runtime inflation.
@@ -31,5 +31,9 @@
 		
 		<IsIos Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">true</IsIos>
 		<IsWindows Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">True</IsWindows>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="$(IsCI)">
+		<DefineConstants>$(DefineConstants);CI</DefineConstants>
 	</PropertyGroup>
 </Project>

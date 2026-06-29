@@ -20,6 +20,8 @@ public sealed partial class LogViewModel : BaseViewModel
 	[ObservableProperty]
 	public partial string? Query { get; set; }
 
+	public string? GlobalQuery { get; set; }
+
 	public required string FileName { get; init; }
 
 	public LogViewModel(LoggerReader reader)
@@ -42,7 +44,7 @@ public sealed partial class LogViewModel : BaseViewModel
 	[RelayCommand]
 	async Task Filter()
 	{
-		var q = Query;
+		var q = BuildQuery();
 		if (string.IsNullOrEmpty(q))
 		{
 			Debug.Assert(fullText is not null);
@@ -63,6 +65,21 @@ public sealed partial class LogViewModel : BaseViewModel
 		{
 			Status = $"Error applying filter: {ex.Message}";
 		}
+	}
+
+	string? BuildQuery()
+	{
+		var inner = Query;
+		var global = GlobalQuery;
+		var hasInner = !string.IsNullOrEmpty(inner);
+		var hasGlobal = !string.IsNullOrEmpty(global);
+
+		if (hasGlobal && hasInner)
+		{
+			return $"({global}) & ({inner})";
+		}
+
+		return hasGlobal ? global : inner;
 	}
 
 	[RelayCommand]

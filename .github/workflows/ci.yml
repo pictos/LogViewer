@@ -42,6 +42,7 @@ jobs:
           dotnet build $env:TEST_PROJECT `
             -c $env:CONFIGURATION `
             -f $env:WINDOWS_TFM `
+            -p:IsCI=true `
             /bl:.\artifacts\logs\msbuild-build-devicetests.binlog
 
       - name: 2) Run tests

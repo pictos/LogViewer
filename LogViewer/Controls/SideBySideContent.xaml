@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Grid
+	x:Class="LogViewer.Controls.SideBySideContent"
+	xmlns="http://schemas.microsoft.com/dotnet/maui/global"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	x:DataType="SideBySideViewModel"
+	RowDefinitions="auto, *">
+	<Entry
+		x:Name="globalFilter"
+		x:FieldModifier="internal"
+		IsVisible="False"
+		Placeholder="Global filter"
+		Text="{Binding Query}">
+		<Entry.Behaviors>
+			<UserStoppedTypingBehavior Command="{Binding GlobalFilterCommand}" StoppedTypingTimeThreshold="100" />
+		</Entry.Behaviors>
+	</Entry>
+
+	<Grid
+		x:Name="columns"
+		Grid.Row="1"
+		x:FieldModifier="internal" />
+</Grid>

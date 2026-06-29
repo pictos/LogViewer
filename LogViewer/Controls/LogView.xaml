@@ -9,20 +9,12 @@
 	x:DataType="LogViewModel"
 	RowDefinitions="auto, *, 22">
 
-	<Entry
-		DockLayout.DockPosition="Top"
-		Placeholder="Filter"
-		Text="{Binding Query}">
+	<Entry Placeholder="Filter" Text="{Binding Query}">
 		<Entry.Behaviors>
 			<UserStoppedTypingBehavior Command="{Binding BindingContext.FilterCommand, Source={x:Reference this}}" StoppedTypingTimeThreshold="100" />
 		</Entry.Behaviors>
 	</Entry>
-	<DockLayout
-		x:Name="dock"
-		Grid.Row="1"
-		x:FieldModifier="internal">
-		<LogContent DockLayout.DockPosition="None" />
-	</DockLayout>
+	<LogContent Grid.Row="1" />
 	<Label
 		Grid.Row="2"
 		Background="LightGray"

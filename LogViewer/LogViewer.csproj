@@ -101,4 +101,8 @@
 	<ItemGroup>
 	  <Folder Include="Resources\Images\" />
 	</ItemGroup>
+
+	<ItemGroup>
+	  <InternalsVisibleTo Include="LogViewer.DeviceTests" />
+	</ItemGroup>
 </Project>

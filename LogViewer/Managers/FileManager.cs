@@ -33,9 +33,7 @@ static class FileManager
 			return;
 		}
 
-		var view = page.mainLayout.First(x => ((View)x).BindingContext == vm);
 		var tab = page.tabsLayout.Cast<TabView>().First(x => x.BindingContext == vm);
-
 		page.RemoveLogView(tab);
 	}
 
@@ -59,10 +57,7 @@ static class FileManager
 			LogView = view
 		};
 
-		page.HideAllTabs();
-
-		page.AddTabView(tab);
-		page.AddLogView(view);
+		page.OpenLog(tab);
 	}
 
 	public static void OpenFileInSide(FileResult result)
