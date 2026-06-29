@@ -27,7 +27,7 @@ public sealed partial class LogViewModel : BaseViewModel
 	public LogViewModel(LoggerReader reader)
 	{
 		LogSource = default!;
-		Debug.Assert(reader is not null);
+		Assert(reader is not null);
 		this.reader = reader;
 		_ = ProcessAsync();
 	}
@@ -47,7 +47,7 @@ public sealed partial class LogViewModel : BaseViewModel
 		var q = BuildQuery();
 		if (string.IsNullOrEmpty(q))
 		{
-			Debug.Assert(fullText is not null);
+			Assert(fullText is not null);
 			LogSource = fullText;
 			Status = $"Full log with {fullText.GetItemCount(0)} lines.";
 			return;

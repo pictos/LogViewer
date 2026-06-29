@@ -71,7 +71,7 @@ public partial class SideBySideContent
 			columns.ColumnDefinitions.Add(child is GridSplitter
 				? new ColumnDefinition(SplitterWidth)
 				: new ColumnDefinition(GridLength.Star));
-			Grid.SetColumn((BindableObject)child, column);
+			SetColumn((BindableObject)child, column);
 			column++;
 		}
 	}
