@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation
+    url: https://github.com/pictos/LogViewer/wiki
+    about: Browse the LogViewer documentation
+  - name: Discussions
+    url: https://github.com/pictos/LogViewer/discussions
+    about: Have a question? Start a discussion
