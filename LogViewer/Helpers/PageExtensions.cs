@@ -18,6 +18,15 @@ public static class PageExtensions
 		{
 			page.HideAllGroups();
 			group.IsVisible = true;
+			page.HighlightTabsForGroup(group);
+		}
+
+		void HighlightTabsForGroup(SideBySideContent group)
+		{
+			foreach (var tab in page.tabsLayout.Children.OfType<TabView>())
+			{
+				tab.SetSelected(tab.LogView.Group == group);
+			}
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -46,6 +55,7 @@ public static class PageExtensions
 
 			page.AddTabView(tabView);
 			group.AddLog(tabView.LogView);
+			page.HighlightTabsForGroup(group);
 		}
 
 		public void RemoveLogView(TabView tabView)
