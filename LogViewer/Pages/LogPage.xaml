@@ -17,11 +17,6 @@
 			FlexLayout.Shrink="0.25"
 			Wrap="NoWrap" />
 
-		<!--<SideBySideContent
-			x:Name="logContent"
-			Grid.Row="1"
-			x:FieldModifier="public" />-->
-
 		<!--  LoggerContent will be added programatically  -->
 	</Grid>
 </ContentPage>

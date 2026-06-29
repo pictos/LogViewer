@@ -1,6 +1,5 @@
 using Microsoft.Win32.SafeHandles;
 using System.Collections.Immutable;
-using System.Diagnostics.CodeAnalysis;
 using System.IO.MemoryMappedFiles;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;

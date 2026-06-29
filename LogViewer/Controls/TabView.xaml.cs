@@ -14,7 +14,7 @@ public partial class TabView
 		var tabView = (TabView)sender;
 		var logPage = (LogPage)Shell.Current.CurrentPage;
 
-		if (tabView.LogView.Group is { } group)
+		if (tabView.LogView.Group is SideBySideContent group)
 		{
 			logPage.ShowGroup(group);
 		}
