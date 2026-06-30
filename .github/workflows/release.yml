@@ -60,7 +60,7 @@ jobs:
 
       - name: Restore
         shell: pwsh
-        run: dotnet restore .\LogViewer.slnx
+        run: dotnet restore $env:APP_PROJECT
 
       - name: Publish app
         shell: pwsh
@@ -204,7 +204,7 @@ jobs:
 
       - name: Restore
         shell: pwsh
-        run: dotnet restore ./LogViewer.slnx
+        run: dotnet restore $env:APP_PROJECT
 
       - name: Publish app
         shell: pwsh
