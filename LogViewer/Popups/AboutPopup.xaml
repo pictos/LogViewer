@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Border
+	x:Class="LogViewer.Popups.AboutPopup"
+	xmlns="http://schemas.microsoft.com/dotnet/maui/global"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	xmlns:local="clr-namespace:LogViewer"
+	Padding="20"
+	Background="#1A1F2B"
+	Stroke="#3B82F6"
+	StrokeShape="{RoundRectangle CornerRadius=20}">
+
+	<VerticalStackLayout Spacing="14">
+		<Label
+			FontAttributes="Bold"
+			FontSize="26"
+			HorizontalOptions="Center"
+			Text="LogViewer"
+			TextColor="#F8FAFC" />
+
+		<Label
+			FontSize="14"
+			HorizontalOptions="Center"
+			TextColor="#93C5FD">
+			<Label.FormattedText>
+				<FormattedString>
+					<Span Text="Version " />
+					<Span FontAttributes="Bold" Text="{x:Static local:Contants.Version}" />
+				</FormattedString>
+			</Label.FormattedText>
+		</Label>
+
+		<Label
+			FontSize="15"
+			HorizontalOptions="Center"
+			Text="Created by Pedro Jesus"
+			TextColor="#CBD5E1" />
+
+		<Label
+			FontSize="13"
+			HorizontalOptions="Center"
+			Text="PJSouzaSoftware Inc."
+			TextColor="#94A3B8" />
+
+		<Label
+			HorizontalTextAlignment="Center"
+			LineBreakMode="WordWrap"
+			TextColor="#E2E8F0">
+			<Label.FormattedText>
+				<FormattedString>
+					<Span Text="You can contract my services at " />
+					<Span
+						FontAttributes="Bold"
+						Text="PJSouzaSoftware"
+						TextColor="#60A5FA">
+						<Span.GestureRecognizers>
+							<TapGestureRecognizer Tapped="OnContactTapped" />
+						</Span.GestureRecognizers>
+					</Span>
+					<Span Text="." />
+				</FormattedString>
+			</Label.FormattedText>
+		</Label>
+
+		<Button
+			Background="#2563EB"
+			Clicked="OnCloseClicked"
+			CornerRadius="10"
+			FontAttributes="Bold"
+			HorizontalOptions="Center"
+			Text="Close"
+			TextColor="White"
+			WidthRequest="140" />
+	</VerticalStackLayout>
+</Border>
