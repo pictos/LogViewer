@@ -171,6 +171,7 @@ jobs:
   publish-maccatalyst:
     name: Publish Mac Catalyst
     runs-on: macos-15-intel
+    continue-on-error: true
 
     steps:
       - name: Checkout
@@ -235,7 +236,6 @@ jobs:
     if: github.event_name == 'release'
     needs:
       - publish-windows
-      - publish-maccatalyst
 
     steps:
       - name: Download Windows installer
@@ -262,12 +262,6 @@ jobs:
           name: LogViewer-windows-win10-arm64-msix-unsigned
           path: ./artifacts/release
 
-      - name: Download Mac Catalyst installer
-        uses: actions/download-artifact@v4
-        with:
-          name: LogViewer-maccatalyst-x64
-          path: ./artifacts/release
-
       - name: Attach assets to release
         uses: softprops/action-gh-release@v2
         with:
@@ -276,4 +270,3 @@ jobs:
             ./artifacts/release/LogViewer-windows-win10-x64-msix-unsigned.zip
             ./artifacts/release/LogViewer-windows-win10-arm64-unpackaged.zip
             ./artifacts/release/LogViewer-windows-win10-arm64-msix-unsigned.zip
-            ./artifacts/release/LogViewer-maccatalyst-x64.zip
