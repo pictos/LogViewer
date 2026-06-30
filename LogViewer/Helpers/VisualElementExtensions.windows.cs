@@ -24,6 +24,7 @@ public static class VisualElementExtensions
 		{
 			MouseCursor.Default => CoreCursorType.Arrow,
 			MouseCursor.SizeWestEast => CoreCursorType.SizeWestEast,
+			MouseCursor.Hand => CoreCursorType.Hand,
 			_ => CoreCursorType.Arrow
 		};
 
