@@ -12,6 +12,11 @@
 	<Color x:Key="Secondary">#DFD8F7</Color>
 	<Color x:Key="SecondaryDarkText">#9880e5</Color>
 	<Color x:Key="Tertiary">#2B0B98</Color>
+	<Color x:Key="PopupOverlay">#30000000</Color>
+	<Color x:Key="AboutPopupSurface">#1A1F2B</Color>
+	<Color x:Key="AboutPopupAccent">#3B82F6</Color>
+	<Color x:Key="AboutPopupTextPrimary">#F8FAFC</Color>
+	<Color x:Key="AboutPopupTextSecondary">#CBD5E1</Color>
 
 	<Color x:Key="White">White</Color>
 	<Color x:Key="Black">Black</Color>

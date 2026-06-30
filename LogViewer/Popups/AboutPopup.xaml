@@ -5,8 +5,8 @@
 	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
 	xmlns:local="clr-namespace:LogViewer"
 	Padding="20"
-	Background="#1A1F2B"
-	Stroke="#3B82F6"
+	Background="{StaticResource AboutPopupSurface}"
+	Stroke="{StaticResource AboutPopupAccent}"
 	StrokeShape="{RoundRectangle CornerRadius=20}">
 
 	<VerticalStackLayout Spacing="14">
@@ -15,12 +15,12 @@
 			FontSize="26"
 			HorizontalOptions="Center"
 			Text="LogViewer"
-			TextColor="#F8FAFC" />
+			TextColor="{StaticResource AboutPopupTextPrimary}" />
 
 		<Label
 			FontSize="14"
 			HorizontalOptions="Center"
-			TextColor="#93C5FD">
+			TextColor="{StaticResource AboutPopupAccent}">
 			<Label.FormattedText>
 				<FormattedString>
 					<Span Text="Version " />
@@ -33,36 +33,47 @@
 			FontSize="15"
 			HorizontalOptions="Center"
 			Text="Created by Pedro Jesus"
-			TextColor="#CBD5E1" />
+			TextColor="{StaticResource AboutPopupTextSecondary}" />
 
 		<Label
 			FontSize="13"
 			HorizontalOptions="Center"
 			Text="PJSouzaSoftware Inc."
-			TextColor="#94A3B8" />
+			TextColor="{StaticResource AboutPopupTextSecondary}" />
 
-		<Label
-			HorizontalTextAlignment="Center"
-			LineBreakMode="WordWrap"
-			TextColor="#E2E8F0">
-			<Label.FormattedText>
-				<FormattedString>
-					<Span Text="You can contract my services at " />
-					<Span
-						FontAttributes="Bold"
-						Text="PJSouzaSoftware"
-						TextColor="#60A5FA">
-						<Span.GestureRecognizers>
-							<TapGestureRecognizer Tapped="OnContactTapped" />
-						</Span.GestureRecognizers>
-					</Span>
-					<Span Text="." />
-				</FormattedString>
-			</Label.FormattedText>
-		</Label>
+		<HorizontalStackLayout HorizontalOptions="Center" Spacing="3">
+			<Label
+				HorizontalTextAlignment="Center"
+				LineBreakMode="WordWrap"
+				Text="You can contract my services at "
+				TextColor="{StaticResource AboutPopupTextSecondary}" />
+			<Label
+				HorizontalTextAlignment="Center"
+				LineBreakMode="WordWrap"
+				TextColor="{StaticResource AboutPopupTextSecondary}">
+
+				<Label.Behaviors>
+					<MouseCursorPlatformBehavior HoverCursor="Hand" />
+				</Label.Behaviors>
+
+				<Label.FormattedText>
+					<FormattedString>
+						<Span
+							FontAttributes="Bold"
+							Text="PJSouzaSoftware"
+							TextColor="{StaticResource AboutPopupAccent}">
+							<Span.GestureRecognizers>
+								<TapGestureRecognizer Tapped="OnContactTapped" />
+							</Span.GestureRecognizers>
+						</Span>
+						<Span Text="." />
+					</FormattedString>
+				</Label.FormattedText>
+			</Label>
+		</HorizontalStackLayout>
 
 		<Button
-			Background="#2563EB"
+			Background="{StaticResource AboutPopupAccent}"
 			Clicked="OnCloseClicked"
 			CornerRadius="10"
 			FontAttributes="Bold"
