@@ -25,7 +25,12 @@ public static class VisualElementExtensions
 			MouseCursor.Default => CoreCursorType.Arrow,
 			MouseCursor.SizeWestEast => CoreCursorType.SizeWestEast,
 			MouseCursor.Hand => CoreCursorType.Hand,
-			_ => CoreCursorType.Arrow
+			_ =>
+#if DEBUG
+			throw new IndexOutOfRangeException($"{nameof(MouseCursor)}.{cursor} isn't mapped.")
+#else
+			CoreCursorType.Arrow
+#endif
 		};
 
 		var inputCursor = InputCursor.CreateFromCoreCursor(new CoreCursor(coreCursor, 1));
@@ -33,11 +38,3 @@ public static class VisualElementExtensions
 		return inputCursor;
 	}
 }
-
-//class B : StackPanel
-//{
-//	public B()
-//	{
-//		ProtectedCursor
-//	}
-//}
