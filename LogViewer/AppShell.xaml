@@ -14,6 +14,12 @@
 			<MenuFlyoutItem Command="{Binding OpenFileCommand}" Text="Open..." />
 			<MenuFlyoutItem Command="{Binding OpenSideBySideCommand}" Text="Open side by side..." />
 		</MenuBarItem>
+
+		<MenuBarItem Text="Help">
+			<MenuFlyoutItem Command="{Binding GiveFeedbackCommand}" Text="Report a problem or Feedback" />
+			<MenuFlyoutSeparator />
+			<MenuFlyoutItem Command="{Binding AboutCommand}" Text="About" />
+		</MenuBarItem>
 	</Shell.MenuBarItems>
 
 	<ShellContent ContentTemplate="{DataTemplate LogPage}" Route="LogPage" />

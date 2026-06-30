@@ -1,5 +1,8 @@
 ﻿using CommunityToolkit.Mvvm.Input;
 using LogViewer.Managers;
+using LogViewer.Pages;
+using LogViewer.Popups;
+using LogViewer.Services;
 
 namespace LogViewer.ViewModels;
 
@@ -48,4 +51,10 @@ sealed partial class ShellViewModel : BaseViewModel
 
 		FileManager.OpenFileInSide(result);
 	}
+
+	[RelayCommand]
+	Task About() => NavigationService.ShowPopupAsync(new PopupPage(new AboutPopup()));
+
+	[RelayCommand]
+	Task GiveFeedback() => Browser.OpenAsync("https://github.com/pictos/LogViewer/issues/new/choose");
 }
