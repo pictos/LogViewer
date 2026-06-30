@@ -1,7 +1,8 @@
 ﻿namespace LogViewer.Models;
 
-public enum MouseCursor
+public enum MouseCursor : byte
 {
 	Default,
 	SizeWestEast,
+	Hand
 }

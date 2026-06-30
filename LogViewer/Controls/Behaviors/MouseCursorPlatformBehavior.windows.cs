@@ -5,12 +5,12 @@ using Microsoft.UI.Xaml.Input;
 
 namespace LogViewer.Controls.Behaviors;
 
-partial class MouseCursorPlatformBehavior : PlatformBehavior<GridSplitter, UIElement>
+partial class MouseCursorPlatformBehavior : PlatformBehavior<VisualElement, UIElement>
 {
 	InputCursor wCursor = default!;
 	static readonly InputCursor arrowCursor = MouseCursor.Default.ToPlatform();
 
-	protected override void OnAttachedTo(GridSplitter bindable, UIElement platformView)
+	protected override void OnAttachedTo(VisualElement bindable, UIElement platformView)
 	{
 		base.OnAttachedTo(bindable, platformView);
 
@@ -20,7 +20,7 @@ partial class MouseCursorPlatformBehavior : PlatformBehavior<GridSplitter, UIEle
 		platformView.PointerExited += OnPointerExited;
 	}
 
-	protected override void OnDetachedFrom(GridSplitter bindable, UIElement platformView)
+	protected override void OnDetachedFrom(VisualElement bindable, UIElement platformView)
 	{
 		base.OnDetachedFrom(bindable, platformView);
 		platformView.PointerExited -= OnPointerExited;

@@ -8,6 +8,7 @@
 	RowDefinitions="auto, *">
 	<Entry
 		x:Name="globalFilter"
+		Margin="5,0"
 		x:FieldModifier="internal"
 		IsVisible="False"
 		Placeholder="Global filter"
