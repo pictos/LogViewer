@@ -121,20 +121,18 @@ jobs:
             -p:AppxPackageSigningEnabled=false `
             --output .\artifacts\publish\windows-msix
 
-      - name: Create packaged installer archive
+      - name: Collect MSIX installer
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path .\artifacts\installers | Out-Null
-          Compress-Archive `
-            -Path .\artifacts\publish\windows-msix\* `
-            -DestinationPath .\artifacts\installers\LogViewer-windows-win10-x64-msix-unsigned.zip `
-            -Force
+          $msix = Get-ChildItem -Path .\artifacts\publish\windows-msix -Filter *.msix -Recurse | Select-Object -First 1
+          Copy-Item $msix.FullName .\artifacts\installers\LogViewer-windows-win10-x64-unsigned.msix
 
-      - name: Upload packaged installer artifact
+      - name: Upload MSIX installer artifact
         uses: actions/upload-artifact@v4
         with:
           name: LogViewer-windows-win10-x64-msix-unsigned
-          path: .\artifacts\installers\LogViewer-windows-win10-x64-msix-unsigned.zip
+          path: .\artifacts\installers\LogViewer-windows-win10-x64-unsigned.msix
 
       - name: Publish MSIX package (arm64, unsigned)
         shell: pwsh
@@ -149,20 +147,18 @@ jobs:
             -p:AppxPackageSigningEnabled=false `
             --output .\artifacts\publish\windows-msix-arm64
 
-      - name: Create packaged installer archive (arm64)
+      - name: Collect MSIX installer (arm64)
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path .\artifacts\installers | Out-Null
-          Compress-Archive `
-            -Path .\artifacts\publish\windows-msix-arm64\* `
-            -DestinationPath .\artifacts\installers\LogViewer-windows-win10-arm64-msix-unsigned.zip `
-            -Force
+          $msix = Get-ChildItem -Path .\artifacts\publish\windows-msix-arm64 -Filter *.msix -Recurse | Select-Object -First 1
+          Copy-Item $msix.FullName .\artifacts\installers\LogViewer-windows-win10-arm64-unsigned.msix
 
-      - name: Upload packaged installer artifact (arm64)
+      - name: Upload MSIX installer artifact (arm64)
         uses: actions/upload-artifact@v4
         with:
           name: LogViewer-windows-win10-arm64-msix-unsigned
-          path: .\artifacts\installers\LogViewer-windows-win10-arm64-msix-unsigned.zip
+          path: .\artifacts\installers\LogViewer-windows-win10-arm64-unsigned.msix
 
   publish-maccatalyst:
     name: Publish Mac Catalyst
@@ -263,6 +259,6 @@ jobs:
         with:
           files: |
             ./artifacts/release/LogViewer-windows-win10-x64-unpackaged.zip
-            ./artifacts/release/LogViewer-windows-win10-x64-msix-unsigned.zip
+            ./artifacts/release/LogViewer-windows-win10-x64-unsigned.msix
             ./artifacts/release/LogViewer-windows-win10-arm64-unpackaged.zip
-            ./artifacts/release/LogViewer-windows-win10-arm64-msix-unsigned.zip
+            ./artifacts/release/LogViewer-windows-win10-arm64-unsigned.msix
