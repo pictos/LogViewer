@@ -6,6 +6,11 @@
 	x:Name="this"
 	x:DataType="SideBySideViewModel"
 	RowDefinitions="auto, *">
+
+	<Grid.GestureRecognizers>
+		<DropGestureRecognizer AllowDrop="True" Drop="DropGestureRecognizer_Drop" />
+	</Grid.GestureRecognizers>
+
 	<Entry
 		x:Name="globalFilter"
 		Margin="5,0"

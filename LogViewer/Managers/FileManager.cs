@@ -6,9 +6,6 @@ namespace LogViewer.Managers;
 
 static class FileManager
 {
-	// TODO: see if there's a need for a HashSet to store the views, it would be faster than lookup into the layout's Children list
-	//static readonly Dictionary<FileResult, LoggerReader> readers = [];
-
 	static ContentPage CurrentPage => (ContentPage)Shell.Current.CurrentPage;
 
 	public static void OpenFile(FileResult fileResult)
@@ -16,7 +13,6 @@ static class FileManager
 		Assert(fileResult is not null);
 
 		var reader = new LoggerReader(fileResult.FullPath);
-		//readers.TryAdd(fileResult, reader);
 		AddNewFileOnPage(fileResult, reader);
 	}
 

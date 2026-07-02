@@ -1,3 +1,4 @@
+using LogViewer.Services;
 using LogViewer.ViewModels;
 
 namespace LogViewer.Controls;
@@ -83,4 +84,16 @@ public partial class SideBySideContent
 	}
 
 	void UpdateGlobalFilterVisibility() => globalFilter.IsVisible = LogViewCount > 1;
+
+	private async void DropGestureRecognizer_Drop(object sender, DropEventArgs e)
+	{
+		if (e.PlatformArgs is not PlatformDropEventArgs dropArgs)
+		{
+			return;
+		}
+		e.Handled = true;
+#if WINDOWS
+		await DropFileService.HandleDragSideBySide(dropArgs);
+#endif
+	}
 }
