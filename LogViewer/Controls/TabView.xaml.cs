@@ -12,8 +12,11 @@ public partial class TabView
 		InitializeComponent();
 	}
 
-	public void SetSelected(bool isSelected) =>
+	public void SetSelected(bool isSelected)
+	{
 		Background = isSelected ? SelectedBackground : UnselectedBackground;
+		Opacity = isSelected ? 1.0 : 0.5;
+	}
 
 	static void TapGestureRecognizer_Tapped(object sender, TappedEventArgs e)
 	{
