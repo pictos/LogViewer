@@ -14,29 +14,40 @@ static class DropFileService
 			return;
 		}
 
-		var (draggedItems, dragUI) = await GetDesiredItems(wArgs);
+		var def = wArgs.GetDeferral();
 
-		if (draggedItems.Count is 0)
+		try
 		{
-			return;
+			var (draggedItems, dragUI) = await GetDesiredItems(wArgs);
+
+			if (draggedItems.Count is 0)
+			{
+				return;
+			}
+
+			dragUI.Caption = "Open";
+			dragUI.IsCaptionVisible = false;
+			foreach (var item in draggedItems)
+			{
+				if (item is not Windows.Storage.StorageFile { FileType: string fileExtension } file)
+				{
+					continue;
+				}
+
+				if (!IsSupportedFile(fileExtension))
+				{
+					dragUI.Caption = "Invalid file will be ignored.";
+					continue;
+				}
+
+				var fileResult = new FileResult(file.Path);
+				FileManager.OpenFileInSide(fileResult);
+			}
 		}
-
-		dragUI.Caption = "Open";
-		foreach (var item in draggedItems)
+		finally
 		{
-			if (item is not Windows.Storage.StorageFile { FileType: string fileExtension } file)
-			{
-				continue;
-			}
-
-			if (!IsSupportedFile(fileExtension))
-			{
-				dragUI.Caption = "Invalid file will be ignored.";
-				continue;
-			}
-
-			var fileResult = new FileResult(file.Path);
-			FileManager.OpenFileInSide(fileResult);
+			def.Complete();
+			wArgs.Handled = true;
 		}
 	}
 
@@ -47,37 +58,47 @@ static class DropFileService
 			return;
 		}
 
-		var (draggedItems, dragUI) = await GetDesiredItems(wArgs);
-
-		if (draggedItems.Count is 0)
+		var def = wArgs.GetDeferral();
+		try
 		{
-			return;
-		}
+			var (draggedItems, dragUI) = await GetDesiredItems(wArgs);
 
-		dragUI.Caption = "Open";
-		OpenFile(draggedItems, dragUI);
-
-		if (draggedItems.Count is 1)
-		{
-			return;
-		}
-
-		for (var i = 1; i < draggedItems.Count; i++)
-		{
-			var item = draggedItems[i];
-			if (item is not Windows.Storage.StorageFile { FileType: string fileExtension } file)
+			if (draggedItems.Count is 0)
 			{
-				continue;
+				return;
 			}
 
-			if (!IsSupportedFile(fileExtension))
+			dragUI.Caption = "Open";
+			dragUI.IsCaptionVisible = false;
+			OpenFile(draggedItems, dragUI);
+
+			if (draggedItems.Count is 1)
 			{
-				dragUI.Caption = "Invalid file will be ignored.";
-				continue;
+				return;
 			}
 
-			var fileResult = new FileResult(file.Path);
-			FileManager.OpenFileInSide(fileResult);
+			for (var i = 1; i < draggedItems.Count; i++)
+			{
+				var item = draggedItems[i];
+				if (item is not Windows.Storage.StorageFile { FileType: string fileExtension } file)
+				{
+					continue;
+				}
+
+				if (!IsSupportedFile(fileExtension))
+				{
+					dragUI.Caption = "Invalid file will be ignored.";
+					continue;
+				}
+
+				var fileResult = new FileResult(file.Path);
+				FileManager.OpenFileInSide(fileResult);
+			}
+		}
+		finally
+		{
+			def.Complete();
+			wArgs.Handled = true;
 		}
 	}
 
