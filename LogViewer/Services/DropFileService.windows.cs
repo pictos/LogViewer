@@ -61,16 +61,14 @@ static class DropFileService
 		var def = wArgs.GetDeferral();
 		try
 		{
-			var (draggedItems, dragUI) = await GetDesiredItems(wArgs);
+			var (draggedItems, _) = await GetDesiredItems(wArgs);
 
 			if (draggedItems.Count is 0)
 			{
 				return;
 			}
 
-			dragUI.Caption = "Open";
-			dragUI.IsCaptionVisible = false;
-			OpenFile(draggedItems, dragUI);
+			OpenFile(draggedItems);
 
 			if (draggedItems.Count is 1)
 			{
@@ -87,7 +85,6 @@ static class DropFileService
 
 				if (!IsSupportedFile(fileExtension))
 				{
-					dragUI.Caption = "Invalid file will be ignored.";
 					continue;
 				}
 
@@ -102,18 +99,16 @@ static class DropFileService
 		}
 	}
 
-	private static void OpenFile(IReadOnlyList<IStorageItem> draggedItems, DragUIOverride dragUI)
+	private static void OpenFile(IReadOnlyList<IStorageItem> draggedItems)
 	{
 		var item = draggedItems[0];
 		if (item is not Windows.Storage.StorageFile { FileType: string fileExtension } file)
 		{
-			dragUI.Caption = "Invalid file type!";
 			return;
 		}
 
 		if (!IsSupportedFile(fileExtension))
 		{
-			dragUI.Caption = "Invalid file will be ignored.";
 			return;
 		}
 
