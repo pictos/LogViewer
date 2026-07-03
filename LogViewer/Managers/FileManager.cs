@@ -16,10 +16,10 @@ static class FileManager
 		AddNewFileOnPage(fileResult, reader);
 	}
 
-	public static void CloseFile(LogViewModel vm, LoggerReader reader)
+	public static void CloseFile(LogViewModel vm)
 	{
 		RemoveLogView(vm);
-		reader.Dispose();
+		vm.Dispose();
 	}
 
 	static void RemoveLogView(LogViewModel vm)

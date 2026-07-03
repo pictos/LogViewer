@@ -85,7 +85,7 @@ public sealed partial class LogViewModel : BaseViewModel, IDisposable
 	[RelayCommand]
 	void Close()
 	{
-		FileManager.CloseFile(this, reader);
+		FileManager.CloseFile(this);
 	}
 
 	public void Dispose()
