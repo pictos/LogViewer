@@ -88,6 +88,7 @@ public static class PageExtensions
 			foreach (var tab in tabs)
 			{
 				page.tabsLayout.Remove(tab);
+				((IDisposable)tab.BindingContext).Dispose();
 			}
 
 			page.mainLayout.Remove(group);
