@@ -121,18 +121,24 @@ jobs:
             -p:AppxPackageSigningEnabled=false `
             --output .\artifacts\publish\windows-msix
 
-      - name: Collect MSIX installer
+      - name: Collect MSIX bundle
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path .\artifacts\installers | Out-Null
-          $msix = Get-ChildItem -Path .\artifacts\publish\windows-msix -Filter *.msix -Recurse | Select-Object -First 1
-          Copy-Item $msix.FullName .\artifacts\installers\LogViewer-windows-win10-x64-unsigned.msix
+          $bundle = Get-ChildItem -Path .\LogViewer\AppPackages -Filter *.msixbundle -Recurse | Select-Object -First 1
+          if (-not $bundle) { Write-Error "No .msixbundle found in LogViewer\AppPackages"; exit 1 }
+          Copy-Item $bundle.FullName .\artifacts\installers\LogViewer-windows-win10-x64-unsigned.msixbundle
 
-      - name: Upload MSIX installer artifact
+      - name: Upload MSIX bundle artifact
         uses: actions/upload-artifact@v4
         with:
           name: LogViewer-windows-win10-x64-msix-unsigned
-          path: .\artifacts\installers\LogViewer-windows-win10-x64-unsigned.msix
+          path: .\artifacts\installers\LogViewer-windows-win10-x64-unsigned.msixbundle
+
+      - name: Clean AppPackages before arm64 build
+        shell: pwsh
+        run: |
+          if (Test-Path .\LogViewer\AppPackages) { Remove-Item -Recurse -Force .\LogViewer\AppPackages }
 
       - name: Publish MSIX package (arm64, unsigned)
         shell: pwsh
@@ -147,18 +153,19 @@ jobs:
             -p:AppxPackageSigningEnabled=false `
             --output .\artifacts\publish\windows-msix-arm64
 
-      - name: Collect MSIX installer (arm64)
+      - name: Collect MSIX bundle (arm64)
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path .\artifacts\installers | Out-Null
-          $msix = Get-ChildItem -Path .\artifacts\publish\windows-msix-arm64 -Filter *.msix -Recurse | Select-Object -First 1
-          Copy-Item $msix.FullName .\artifacts\installers\LogViewer-windows-win10-arm64-unsigned.msix
+          $bundle = Get-ChildItem -Path .\LogViewer\AppPackages -Filter *.msixbundle -Recurse | Select-Object -First 1
+          if (-not $bundle) { Write-Error "No .msixbundle found in LogViewer\AppPackages"; exit 1 }
+          Copy-Item $bundle.FullName .\artifacts\installers\LogViewer-windows-win10-arm64-unsigned.msixbundle
 
-      - name: Upload MSIX installer artifact (arm64)
+      - name: Upload MSIX bundle artifact (arm64)
         uses: actions/upload-artifact@v4
         with:
           name: LogViewer-windows-win10-arm64-msix-unsigned
-          path: .\artifacts\installers\LogViewer-windows-win10-arm64-unsigned.msix
+          path: .\artifacts\installers\LogViewer-windows-win10-arm64-unsigned.msixbundle
 
   publish-maccatalyst:
     name: Publish Mac Catalyst
@@ -259,6 +266,6 @@ jobs:
         with:
           files: |
             ./artifacts/release/LogViewer-windows-win10-x64-unpackaged.zip
-            ./artifacts/release/LogViewer-windows-win10-x64-unsigned.msix
+            ./artifacts/release/LogViewer-windows-win10-x64-unsigned.msixbundle
             ./artifacts/release/LogViewer-windows-win10-arm64-unpackaged.zip
-            ./artifacts/release/LogViewer-windows-win10-arm64-unsigned.msix
+            ./artifacts/release/LogViewer-windows-win10-arm64-unsigned.msixbundle
