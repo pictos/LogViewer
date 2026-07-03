@@ -14,6 +14,7 @@ public unsafe sealed partial class LoggerReader : IDisposable
 	const byte newLine = (byte)'\n';
 	const byte carriageReturn = (byte)'\r';
 	const byte semiCollon = (byte)';';
+	bool isDisposed;
 
 	readonly MemoryMappedFile mmf;
 	readonly MemoryMappedViewAccessor va;
@@ -286,10 +287,16 @@ public unsafe sealed partial class LoggerReader : IDisposable
 
 	public void Dispose()
 	{
+		if (isDisposed)
+		{
+			return;
+		}
+
 		vaHandle.Dispose();
 		va.Dispose();
 		mmf.Dispose();
 		GC.SuppressFinalize(this);
+		isDisposed = true;
 	}
 }
 

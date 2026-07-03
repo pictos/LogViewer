@@ -6,7 +6,7 @@ using System.Diagnostics;
 
 namespace LogViewer.ViewModels;
 
-public sealed partial class LogViewModel : BaseViewModel
+public sealed partial class LogViewModel : BaseViewModel, IDisposable
 {
 	readonly LoggerReader reader;
 	IVirtualScrollAdapter? fullText;
@@ -85,6 +85,11 @@ public sealed partial class LogViewModel : BaseViewModel
 	[RelayCommand]
 	void Close()
 	{
-		FileManager.CloseFile(this, reader);
+		FileManager.CloseFile(this);
+	}
+
+	public void Dispose()
+	{
+		reader.Dispose();
 	}
 }
