@@ -200,6 +200,12 @@ PublishScripts/
 **/[Pp]ackages/*
 # except build/, which is used as an MSBuild target.
 !**/[Pp]ackages/build/
+# Keep repository-local packages committed for CI restores
+!/packages/
+!/packages/*.nupkg
+!/packages/*.snupkg
+# macOS Finder metadata should stay untracked
+/packages/.DS_Store
 # Uncomment if necessary however generally it will be regenerated when needed
 #!**/[Pp]ackages/repositories.config
 # NuGet v3's project.json files produces more ignorable files

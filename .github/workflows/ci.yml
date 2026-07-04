@@ -83,5 +83,75 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Build-Logs
+          name: Build-Logs-Windows
           path: .\artifacts\logs
+
+  build-test-package-maccatalyst:
+    name: Build, test and package (macOS Catalyst)
+    runs-on: macos-15
+
+    env:
+      CONFIGURATION: Release
+      TEST_PROJECT: LogViewer.DeviceTests/LogViewer.DeviceTests.csproj
+      APP_PROJECT: LogViewer/LogViewer.csproj
+      MACCATALYST_TFM: net10.0-maccatalyst
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup tools
+        uses: ./.github/workflows/setup-tools
+
+      - name: Restore
+        shell: bash
+        run: dotnet restore ./LogViewer.slnx
+
+      - name: 1) Build DeviceTests
+        shell: bash
+        run: |
+          dotnet build $TEST_PROJECT \
+            -c $CONFIGURATION \
+            -f $MACCATALYST_TFM \
+            -p:IsCI=true \
+            /bl:./artifacts/logs/msbuild-build-devicetests.binlog
+
+      - name: 2) Run tests
+        uses: ./.github/workflows/test-dotnet-test-maccatalyst
+        with:
+          test-project: LogViewer.DeviceTests/LogViewer.DeviceTests.csproj
+          target-framework: net10.0-maccatalyst
+          configuration: Release
+          artifact-name: Test Results (dotnet test) - macOS Catalyst
+
+      - name: 3) Build LogViewer
+        shell: bash
+        run: |
+          dotnet build $APP_PROJECT \
+            -c $CONFIGURATION \
+            -f $MACCATALYST_TFM \
+            /bl:./artifacts/logs/msbuild-build-logviewer.binlog
+
+      - name: 4) Publish package for PR artifacts
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          dotnet publish $APP_PROJECT \
+            -c $CONFIGURATION \
+            -f $MACCATALYST_TFM \
+            -r maccatalyst-x64 \
+            --output ./artifacts/package/LogViewer
+
+      - name: Upload package artifact
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: LogViewer-MacCatalyst-Package
+          path: ./artifacts/package
+
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Build-Logs-macOS
+          path: ./artifacts/logs
