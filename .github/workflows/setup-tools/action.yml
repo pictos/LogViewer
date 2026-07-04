@@ -18,3 +18,8 @@ runs:
     - name: Install .NET MAUI
       shell: pwsh
       run: dotnet workload install maui --source https://api.nuget.org/v3/index.json
+
+    - name: Install Mac Catalyst workloads
+      if: runner.os == 'macOS'
+      shell: pwsh
+      run: dotnet workload install maccatalyst maui-maccatalyst --source https://api.nuget.org/v3/index.json
