@@ -26,10 +26,10 @@
 		<TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
 
 
-		<IsIos>false</IsIos>
+		<IsMac>false</IsMac>
 		<IsWindows>False</IsWindows>
 		
-		<IsIos Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">true</IsIos>
+		<IsMac Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">true</IsMac>
 		<IsWindows Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">True</IsWindows>
 	</PropertyGroup>
 

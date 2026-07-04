@@ -29,7 +29,7 @@ sealed partial class ShellViewModel : BaseViewModel
 	[RelayCommand]
 	async Task OpenFile()
 	{
-		var result = await FilePicker.Default.PickAsync(options);
+		var result = await FilePickerService.PickAsync(options);
 
 		if (result is null)
 		{
@@ -42,7 +42,7 @@ sealed partial class ShellViewModel : BaseViewModel
 	[RelayCommand]
 	async Task OpenSideBySide()
 	{
-		var result = await FilePicker.Default.PickAsync(options);
+		var result = await FilePickerService.PickAsync(options);
 
 		if (result is null)
 		{
