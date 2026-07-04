@@ -236,10 +236,20 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p ./artifacts/installers
-          app_path="$(find ./artifacts/publish/maccatalyst-${{ matrix.arch }} -maxdepth 1 -name '*.app' | head -n 1)"
+
+          # The Mac Catalyst .app bundle is emitted to the project's bin output
+          # (bin/Release/net10.0-maccatalyst/<rid>/), not to the publish
+          # --output directory, so search both locations for it.
+          app_path="$(find \
+            ./artifacts/publish/maccatalyst-${{ matrix.arch }} \
+            ./LogViewer/bin/${CONFIGURATION}/${MACCATALYST_TFM}/${{ matrix.rid }} \
+            -maxdepth 1 -name '*.app' 2>/dev/null | head -n 1)"
           if [ -z "$app_path" ]; then
             echo "No .app bundle found in publish output" >&2
-            ls -la ./artifacts/publish/maccatalyst-${{ matrix.arch }} >&2
+            echo "--- publish output ---" >&2
+            ls -la ./artifacts/publish/maccatalyst-${{ matrix.arch }} >&2 || true
+            echo "--- bin output ---" >&2
+            ls -la "./LogViewer/bin/${CONFIGURATION}/${MACCATALYST_TFM}/${{ matrix.rid }}" >&2 || true
             exit 1
           fi
           echo "Found app bundle: $app_path"
