@@ -49,6 +49,14 @@
 		<PackageReference Include="NUnit" Version="4.5.1" />
 	</ItemGroup>
 
+	<!-- On Apple platforms (Mac Catalyst / iOS) the Release linker trims types and
+	     members that the test framework only reaches via reflection. Root the test
+	     assembly so test classes/methods survive. The Task awaiter interface shape
+	     NUnit needs for `async Task` tests is preserved in code (see AsyncTrimmerRoots). -->
+	<ItemGroup Condition="'$(IsMac)' == 'true'">
+		<TrimmerRootAssembly Include="LogViewer.DeviceTests" RootMode="all" />
+	</ItemGroup>
+
 	<ItemGroup>
 		<ProjectReference Include="..\LogViewer\LogViewer.csproj">
 			<AdditionalProperties>IsDeviceTestProject=true</AdditionalProperties>
