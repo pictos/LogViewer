@@ -169,7 +169,9 @@ jobs:
 
   publish-maccatalyst:
     name: Publish Mac Catalyst
-    runs-on: macos-15-intel
+    # macos-26 ships Xcode 26.5 (default), matching the Mac Catalyst band
+    # bundled with the .NET 10 SDK. See ci.yml for details.
+    runs-on: macos-26
     continue-on-error: true
 
     steps:
