@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Foundation;
 using ObjCRuntime;
@@ -12,6 +13,14 @@ namespace LogViewer.Services;
 // (UIKit/NSOpenPanel lifecycle mismatch, present on all macCatalyst versions).
 public static class FilePickerService
 {
+    static readonly NSNumber nsTrue = new(true);
+    static readonly NSNumber nsFalse = new(false);
+    static readonly NSString canChooseFiles = new("canChooseFiles");
+    static readonly NSString canChooseDirectories = new("canChooseDirectories");
+    static readonly NSString allowsMultipleSelection = new("allowsMultipleSelection");
+    static readonly NSString allowedContentTypes = new("allowedContentTypes");
+    static readonly NSString URLs = new("URLs");
+    
     // Needed to call NSOpenPanel's factory method and runModal, which are not
     // accessible through NSObject KVC.
     [DllImport("/usr/lib/libobjc.dylib", EntryPoint = "objc_msgSend")]
@@ -53,15 +62,15 @@ public static class FilePickerService
             }
 
             var panel = ObjCRuntime.Runtime.GetNSObject(panelHandle)!;
-            panel.SetValueForKey(new NSNumber(true), new NSString("canChooseFiles"));
-            panel.SetValueForKey(new NSNumber(false), new NSString("canChooseDirectories"));
-            panel.SetValueForKey(new NSNumber(false), new NSString("allowsMultipleSelection"));
+            panel.SetValueForKey(nsTrue, canChooseFiles);
+            panel.SetValueForKey(nsFalse, canChooseDirectories);
+            panel.SetValueForKey(nsFalse, allowsMultipleSelection);
 
             var types = new NSMutableArray(3);
             types.Add(UTTypes.PlainText);
             types.Add(UTTypes.Text);
             types.Add(UTTypes.Log);
-            panel.SetValueForKey(types, new NSString("allowedContentTypes"));
+            panel.SetValueForKey(types, allowedContentTypes);
 
             nint result = NInt_objc_msgSend(panelHandle, Selector.GetHandle("runModal"));
 
@@ -71,7 +80,7 @@ public static class FilePickerService
             }
             else
             {
-                if (panel.ValueForKey(new NSString("URLs")) is NSArray urlsArray)
+                if (panel.ValueForKey(URLs) is NSArray urlsArray)
                 {
                     var urls = NSArray.ArrayFromHandle<NSUrl>(urlsArray.Handle);
                     var url = urls?.FirstOrDefault();
@@ -88,7 +97,7 @@ public static class FilePickerService
         }
         catch (Exception e)
         {
-            Console.WriteLine(e);
+            WriteLine(e);
             return false;
         }
     }
