@@ -168,11 +168,19 @@ jobs:
           path: .\artifacts\installers\LogViewer-windows-win10-arm64-unsigned.msix
 
   publish-maccatalyst:
-    name: Publish Mac Catalyst
+    name: Publish Mac Catalyst (${{ matrix.arch }})
     # macos-26 ships Xcode 26.5 (default), matching the Mac Catalyst band
     # bundled with the .NET 10 SDK. See ci.yml for details.
     runs-on: macos-26
-    continue-on-error: true
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            rid: maccatalyst-arm64
+          - arch: x64
+            rid: maccatalyst-x64
 
     steps:
       - name: Checkout
@@ -209,34 +217,62 @@ jobs:
         run: dotnet restore $env:APP_PROJECT
 
       - name: Publish app
-        shell: pwsh
-        run: |
-          dotnet publish $env:APP_PROJECT `
-            -c $env:CONFIGURATION `
-            -f $env:MACCATALYST_TFM `
-            -r maccatalyst-x64 `
-            -p:EnableCodeSigning=false `
-            --output ./artifacts/publish/maccatalyst
-
-      - name: Create installer archive
         shell: bash
         run: |
-          mkdir -p ./artifacts/installers
-          cd ./artifacts/publish/maccatalyst
-          zip -r ../../installers/LogViewer-maccatalyst-x64.zip .
+          dotnet publish "$APP_PROJECT" \
+            -c "$CONFIGURATION" \
+            -f "$MACCATALYST_TFM" \
+            -r ${{ matrix.rid }} \
+            -p:EnableCodeSigning=false \
+            -p:CreatePackage=false \
+            --output ./artifacts/publish/maccatalyst-${{ matrix.arch }}
 
-      - name: Upload installer artifact
+      # No paid Apple Developer account is available, so the .app bundle is
+      # unsigned and not notarized. macOS Gatekeeper will show an
+      # "unidentified developer" prompt; users must right-click > Open (or
+      # allow it under System Settings > Privacy & Security) the first time.
+      - name: Create DMG installer
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ./artifacts/installers
+          app_path="$(find ./artifacts/publish/maccatalyst-${{ matrix.arch }} -maxdepth 1 -name '*.app' | head -n 1)"
+          if [ -z "$app_path" ]; then
+            echo "No .app bundle found in publish output" >&2
+            ls -la ./artifacts/publish/maccatalyst-${{ matrix.arch }} >&2
+            exit 1
+          fi
+          echo "Found app bundle: $app_path"
+
+          staging="$(mktemp -d)"
+          cp -R "$app_path" "$staging/"
+          ln -s /Applications "$staging/Applications"
+
+          hdiutil create \
+            -volname "LogViewer" \
+            -srcfolder "$staging" \
+            -ov \
+            -format UDZO \
+            ./artifacts/installers/LogViewer-maccatalyst-${{ matrix.arch }}.dmg
+
+          rm -rf "$staging"
+
+      - name: Upload DMG artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LogViewer-maccatalyst-x64
-          path: ./artifacts/installers/LogViewer-maccatalyst-x64.zip
+          name: LogViewer-maccatalyst-${{ matrix.arch }}
+          path: ./artifacts/installers/LogViewer-maccatalyst-${{ matrix.arch }}.dmg
 
   upload-release-assets:
     name: Upload assets to GitHub release
     runs-on: ubuntu-latest
-    if: github.event_name == 'release'
+    # Windows is the priority target: the release must go out as long as the
+    # Windows build succeeds. The macOS job is best-effort, so we only require
+    # publish-windows and let the macOS DMG downloads below be optional.
+    if: github.event_name == 'release' && always() && needs.publish-windows.result == 'success'
     needs:
       - publish-windows
+      - publish-maccatalyst
 
     steps:
       - name: Download Windows installer
@@ -263,11 +299,29 @@ jobs:
           name: LogViewer-windows-win10-arm64-msix-unsigned
           path: ./artifacts/release
 
+      - name: Download macOS arm64 DMG
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: LogViewer-maccatalyst-arm64
+          path: ./artifacts/release
+
+      - name: Download macOS x64 DMG
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: LogViewer-maccatalyst-x64
+          path: ./artifacts/release
+
       - name: Attach assets to release
         uses: softprops/action-gh-release@v2
         with:
+          # fail_on_unmatched_files defaults to false, so any macOS DMG that
+          # was not produced (because the macOS job failed) is simply skipped.
           files: |
             ./artifacts/release/LogViewer-windows-win10-x64-unpackaged.zip
             ./artifacts/release/LogViewer-windows-win10-x64-unsigned.msix
             ./artifacts/release/LogViewer-windows-win10-arm64-unpackaged.zip
             ./artifacts/release/LogViewer-windows-win10-arm64-unsigned.msix
+            ./artifacts/release/LogViewer-maccatalyst-arm64.dmg
+            ./artifacts/release/LogViewer-maccatalyst-x64.dmg
