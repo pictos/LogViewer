@@ -67,11 +67,14 @@
        This target strips those imported items after ResizetizeCollectItems has gathered them. -->
 	<Target Name="_RemoveLogViewerResizetizerItems" AfterTargets="ResizetizeCollectItems">
 		<ItemGroup>
-			<!-- Remove LogViewer's app icon from MauiIcon and from MauiImage (where it lands as IsAppIcon=True) -->
-			<MauiIcon Remove="@(MauiIcon)" Condition="$([System.String]::new('%(Identity)').Contains('LogViewer\Resources\AppIcon'))" />
-			<MauiImage Remove="@(MauiImage)" Condition="$([System.String]::new('%(Identity)').Contains('LogViewer\Resources\AppIcon'))" />
+			<!-- Remove LogViewer's app icon from MauiIcon and from MauiImage (where it lands as IsAppIcon=True).
+			     Item identities use '/' on macOS/Linux and '\' on Windows, so normalise the separator
+			     before matching, otherwise the removal silently no-ops off-Windows and the duplicate
+			     'appicon' output breaks the Mac Catalyst build. -->
+			<MauiIcon Remove="@(MauiIcon)" Condition="$([System.String]::new('%(Identity)').Replace('\','/').Contains('/LogViewer/Resources/AppIcon'))" />
+			<MauiImage Remove="@(MauiImage)" Condition="$([System.String]::new('%(Identity)').Replace('\','/').Contains('/LogViewer/Resources/AppIcon'))" />
 			<!-- Remove LogViewer's splash screen -->
-			<MauiSplashScreen Remove="@(MauiSplashScreen)" Condition="$([System.String]::new('%(Identity)').Contains('LogViewer'))" />
+			<MauiSplashScreen Remove="@(MauiSplashScreen)" Condition="$([System.String]::new('%(Identity)').Replace('\','/').Contains('/LogViewer/Resources/Splash'))" />
 		</ItemGroup>
 	</Target>
 

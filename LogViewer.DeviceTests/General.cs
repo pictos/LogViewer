@@ -1,4 +1,6 @@
-﻿using Windows.ApplicationModel;
+﻿#if WINDOWS
+using Windows.ApplicationModel;
+#endif
 
 namespace LogViewer.DeviceTests;
 
@@ -29,5 +31,8 @@ public static class General
 	public static string FullAppPackageFilePath => BasePath;
 #else
 	public static string BasePath => AppContext.BaseDirectory;
+	public static bool IsPackagedApp => false;
+
+	public static string FullAppPackageFilePath => BasePath;
 #endif
 }
