@@ -39,7 +39,9 @@ public unsafe sealed partial class LoggerReader : IDisposable
 		FilePath = filePath;
 
 		fileLength = new FileInfo(filePath).Length;
-		mmf = MemoryMappedFile.CreateFromFile(filePath, FileMode.Open);
+
+		var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+		mmf = MemoryMappedFile.CreateFromFile(fileStream, null, 0, MemoryMappedFileAccess.Read, HandleInheritability.None, leaveOpen: false);
 
 		byte* ptr = (byte*)0;
 		va = mmf.CreateViewAccessor(0, fileLength, MemoryMappedFileAccess.Read);

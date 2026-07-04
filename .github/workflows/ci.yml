@@ -88,7 +88,11 @@ jobs:
 
   build-test-package-maccatalyst:
     name: Build, test and package (macOS Catalyst)
-    runs-on: macos-15
+    # macos-26 ships Xcode 26.5 (default), which the .NET 10 SDK's bundled
+    # Mac Catalyst workload targets. Older images (macos-15) top out at Xcode
+    # 26.3, so the build resolves to a Mac Catalyst band whose targeting pack
+    # isn't installed and fails with NETSDK1127.
+    runs-on: macos-26
 
     env:
       CONFIGURATION: Release

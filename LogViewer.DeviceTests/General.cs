@@ -1,4 +1,6 @@
-﻿using Windows.ApplicationModel;
+﻿#if WINDOWS
+using Windows.ApplicationModel;
+#endif
 
 namespace LogViewer.DeviceTests;
 
@@ -27,7 +29,19 @@ public static class General
 	public static bool IsPackagedApp => isPackagedAppLazy.Value;
 
 	public static string FullAppPackageFilePath => BasePath;
+#elif MACCATALYST || IOS
+	// On Apple platforms, MauiAsset (Resources/Raw) files are bundled into the
+	// app's Contents/Resources directory, which is NSBundle.MainBundle.ResourcePath.
+	// AppContext.BaseDirectory points to Contents/MonoBundle instead, so the raw
+	// test data files would not be found there.
+	public static string BasePath => Foundation.NSBundle.MainBundle.ResourcePath ?? AppContext.BaseDirectory;
+	public static bool IsPackagedApp => true;
+
+	public static string FullAppPackageFilePath => BasePath;
 #else
 	public static string BasePath => AppContext.BaseDirectory;
+	public static bool IsPackagedApp => false;
+
+	public static string FullAppPackageFilePath => BasePath;
 #endif
 }

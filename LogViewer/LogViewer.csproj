@@ -99,6 +99,13 @@
 		<AppxManifest Remove="Platforms\Windows\**" />
 	</ItemGroup>
 
+	<!-- When referenced as a library, exclude the Mac Catalyst entry-point files. Otherwise
+	     LogViewer's AppDelegate/Program are compiled into the DeviceTests app and the Apple
+	     native registrar fails with MT4118 (two managed types registered as 'AppDelegate'). -->
+	<ItemGroup Condition="'$(IsDeviceTestProject)' == 'true' And '$(IsMac)' == 'true'">
+		<Compile Remove="Platforms\MacCatalyst\**" />
+	</ItemGroup>
+
 	<ItemGroup>
 	  <Folder Include="Resources\Images\" />
 	</ItemGroup>
