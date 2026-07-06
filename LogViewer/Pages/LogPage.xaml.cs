@@ -18,8 +18,6 @@ public partial class LogPage : ContentPage
 		}
 		e.Handled = true;
 
-#if WINDOWS
 		await DropFileService.HandleDragNewTab(dropArgs);
-#endif
 	}
 }
