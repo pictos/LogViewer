@@ -9,6 +9,7 @@ namespace LogViewer.ViewModels;
 public sealed partial class LogViewModel : BaseViewModel, IDisposable
 {
 	readonly LoggerReader reader;
+	readonly Task loadTask;
 	IVirtualScrollAdapter? fullText;
 
 	[ObservableProperty]
@@ -29,7 +30,7 @@ public sealed partial class LogViewModel : BaseViewModel, IDisposable
 		LogSource = default!;
 		Assert(reader is not null);
 		this.reader = reader;
-		_ = ProcessAsync();
+		loadTask = ProcessAsync();
 	}
 
 	async Task ProcessAsync()
@@ -44,6 +45,8 @@ public sealed partial class LogViewModel : BaseViewModel, IDisposable
 	[RelayCommand]
 	async Task Filter()
 	{
+		await loadTask;
+
 		var q = BuildQuery();
 		if (string.IsNullOrEmpty(q))
 		{
