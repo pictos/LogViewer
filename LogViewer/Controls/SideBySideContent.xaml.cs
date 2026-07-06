@@ -92,8 +92,6 @@ public partial class SideBySideContent
 			return;
 		}
 		e.Handled = true;
-#if WINDOWS
 		await DropFileService.HandleDragSideBySide(dropArgs);
-#endif
 	}
 }
