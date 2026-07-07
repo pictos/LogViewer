@@ -5,7 +5,7 @@ using Windows.Storage;
 
 namespace LogViewer.Services;
 
-static class DropFileService
+static partial class DropFileService
 {
 	public static async Task HandleDragSideBySide(PlatformDropEventArgs eventArgs)
 	{
@@ -125,7 +125,4 @@ static class DropFileService
 		return (files, dragUI);
 	}
 
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	static bool IsSupportedFile(string fileName) =>
-		fileName.Equals(".txt", StringComparison.InvariantCultureIgnoreCase) || fileName.Equals(".log", StringComparison.InvariantCultureIgnoreCase);
 }
