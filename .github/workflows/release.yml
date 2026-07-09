@@ -112,64 +112,84 @@ jobs:
           name: LogViewer-windows-win10-arm64-unpackaged
           path: .\artifacts\installers\LogViewer-windows-win10-arm64-unpackaged.zip
 
-      - name: Publish MSIX package (unsigned)
+      # --- Signed MSIX packaging via the Windows App Development CLI ---
+      # The unpackaged ZIPs above are self-contained loose builds. Below we
+      # produce signed MSIX packages from those same publish outputs using
+      # `winapp pack`, signing with a PFX supplied through GitHub secrets.
+      - name: Setup Windows App CLI
+        uses: microsoft/setup-WinAppCli@v0.1
+
+      - name: Validate signing secrets and restore PFX
         shell: pwsh
+        env:
+          SIGN_PFX_BASE64: ${{ secrets.SIGN_PFX_BASE64 }}
+          SIGN_PFX_PASSWORD: ${{ secrets.SIGN_PFX_PASSWORD }}
         run: |
-          dotnet publish $env:APP_PROJECT `
-            -c $env:CONFIGURATION `
-            -f $env:WINDOWS_TFM `
-            -r win-x64 `
-            -p:WindowsPackageType=MSIX `
-            -p:GenerateAppxPackageOnBuild=true `
-            -p:UapAppxPackageBuildMode=SideloadOnly `
-            -p:AppxPackageSigningEnabled=false `
-            --output .\artifacts\publish\windows-msix
+          if ([string]::IsNullOrWhiteSpace($env:SIGN_PFX_BASE64)) {
+            Write-Error "SIGN_PFX_BASE64 secret is not set. Add it under repository/organization secrets (see README)."
+            exit 1
+          }
+          if ([string]::IsNullOrWhiteSpace($env:SIGN_PFX_PASSWORD)) {
+            Write-Error "SIGN_PFX_PASSWORD secret is not set. Add it under repository/organization secrets (see README)."
+            exit 1
+          }
+          $pfxPath = Join-Path $env:RUNNER_TEMP 'sign.pfx'
+          $bytes = [System.Convert]::FromBase64String($env:SIGN_PFX_BASE64)
+          [System.IO.File]::WriteAllBytes($pfxPath, $bytes)
+          "SIGN_PFX_PATH=$pfxPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host "Restored signing PFX to $pfxPath ($($bytes.Length) bytes)"
 
-      - name: Collect MSIX installer
+      - name: Pack signed MSIX (x64)
         shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path .\artifacts\installers | Out-Null
-          $msix = Get-ChildItem -Path .\LogViewer\AppPackages -Filter LogViewer_*.msix -Recurse | Select-Object -First 1
-          if (-not $msix) { Write-Error "No LogViewer .msix found in LogViewer\AppPackages"; exit 1 }
-          Copy-Item $msix.FullName .\artifacts\installers\LogViewer-windows-win10-x64-unsigned.msix
-
-      - name: Upload MSIX installer artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: LogViewer-windows-win10-x64-msix-unsigned
-          path: .\artifacts\installers\LogViewer-windows-win10-x64-unsigned.msix
-
-      - name: Clean AppPackages before arm64 build
-        shell: pwsh
-        run: |
-          if (Test-Path .\LogViewer\AppPackages) { Remove-Item -Recurse -Force .\LogViewer\AppPackages }
-
-      - name: Publish MSIX package (arm64, unsigned)
-        shell: pwsh
-        run: |
-          dotnet publish $env:APP_PROJECT `
-            -c $env:CONFIGURATION `
-            -f $env:WINDOWS_TFM `
-            -r win-arm64 `
-            -p:WindowsPackageType=MSIX `
-            -p:GenerateAppxPackageOnBuild=true `
-            -p:UapAppxPackageBuildMode=SideloadOnly `
-            -p:AppxPackageSigningEnabled=false `
-            --output .\artifacts\publish\windows-msix-arm64
-
-      - name: Collect MSIX installer (arm64)
-        shell: pwsh
+        env:
+          SIGN_PFX_PASSWORD: ${{ secrets.SIGN_PFX_PASSWORD }}
         run: |
           New-Item -ItemType Directory -Force -Path .\artifacts\installers | Out-Null
-          $msix = Get-ChildItem -Path .\LogViewer\AppPackages -Filter LogViewer_*.msix -Recurse | Select-Object -First 1
-          if (-not $msix) { Write-Error "No LogViewer .msix found in LogViewer\AppPackages"; exit 1 }
-          Copy-Item $msix.FullName .\artifacts\installers\LogViewer-windows-win10-arm64-unsigned.msix
+          $target = '.\artifacts\installers\LogViewer-windows-win10-x64-signed.msix'
+          # The publish output contains multiple .exe files (LogViewer.exe and
+          # RestartAgent.exe), so pin the app entrypoint with --executable.
+          winapp pack .\artifacts\publish\windows `
+            --manifest .\LogViewer\Platforms\Windows\Package.appxmanifest `
+            --executable LogViewer.exe `
+            --cert $env:SIGN_PFX_PATH `
+            --cert-password $env:SIGN_PFX_PASSWORD `
+            --output $target
+          if (-not (Test-Path $target)) {
+            $msix = Get-ChildItem -Path .\artifacts\publish\windows, . -Filter *.msix -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+            if (-not $msix) { Write-Error "No signed .msix produced for x64"; exit 1 }
+            Copy-Item $msix.FullName $target -Force
+          }
 
-      - name: Upload MSIX installer artifact (arm64)
+      - name: Upload signed MSIX artifact (x64)
         uses: actions/upload-artifact@v4
         with:
-          name: LogViewer-windows-win10-arm64-msix-unsigned
-          path: .\artifacts\installers\LogViewer-windows-win10-arm64-unsigned.msix
+          name: LogViewer-windows-win10-x64-msix-signed
+          path: .\artifacts\installers\LogViewer-windows-win10-x64-signed.msix
+
+      - name: Pack signed MSIX (arm64)
+        shell: pwsh
+        env:
+          SIGN_PFX_PASSWORD: ${{ secrets.SIGN_PFX_PASSWORD }}
+        run: |
+          New-Item -ItemType Directory -Force -Path .\artifacts\installers | Out-Null
+          $target = '.\artifacts\installers\LogViewer-windows-win10-arm64-signed.msix'
+          winapp pack .\artifacts\publish\windows-arm64 `
+            --manifest .\LogViewer\Platforms\Windows\Package.appxmanifest `
+            --executable LogViewer.exe `
+            --cert $env:SIGN_PFX_PATH `
+            --cert-password $env:SIGN_PFX_PASSWORD `
+            --output $target
+          if (-not (Test-Path $target)) {
+            $msix = Get-ChildItem -Path .\artifacts\publish\windows-arm64, . -Filter *.msix -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+            if (-not $msix) { Write-Error "No signed .msix produced for arm64"; exit 1 }
+            Copy-Item $msix.FullName $target -Force
+          }
+
+      - name: Upload signed MSIX artifact (arm64)
+        uses: actions/upload-artifact@v4
+        with:
+          name: LogViewer-windows-win10-arm64-msix-signed
+          path: .\artifacts\installers\LogViewer-windows-win10-arm64-signed.msix
 
   publish-maccatalyst:
     name: Publish Mac Catalyst (${{ matrix.arch }})
@@ -298,7 +318,7 @@ jobs:
       - name: Download Windows MSIX installer
         uses: actions/download-artifact@v4
         with:
-          name: LogViewer-windows-win10-x64-msix-unsigned
+          name: LogViewer-windows-win10-x64-msix-signed
           path: ./artifacts/release
 
       - name: Download Windows arm64 installer
@@ -310,7 +330,7 @@ jobs:
       - name: Download Windows arm64 MSIX installer
         uses: actions/download-artifact@v4
         with:
-          name: LogViewer-windows-win10-arm64-msix-unsigned
+          name: LogViewer-windows-win10-arm64-msix-signed
           path: ./artifacts/release
 
       - name: Download macOS arm64 DMG
@@ -334,8 +354,8 @@ jobs:
           # was not produced (because the macOS job failed) is simply skipped.
           files: |
             ./artifacts/release/LogViewer-windows-win10-x64-unpackaged.zip
-            ./artifacts/release/LogViewer-windows-win10-x64-unsigned.msix
+            ./artifacts/release/LogViewer-windows-win10-x64-signed.msix
             ./artifacts/release/LogViewer-windows-win10-arm64-unpackaged.zip
-            ./artifacts/release/LogViewer-windows-win10-arm64-unsigned.msix
+            ./artifacts/release/LogViewer-windows-win10-arm64-signed.msix
             ./artifacts/release/LogViewer-maccatalyst-arm64.dmg
             ./artifacts/release/LogViewer-maccatalyst-x64.dmg
