@@ -102,7 +102,7 @@ jobs:
           if (-not $files) { Write-Error "No .exe files found in x64 publish output to sign"; exit 1 }
           foreach ($file in $files) {
             Write-Host "Signing $($file.FullName)"
-            winapp sign $file.FullName --cert $env:SIGN_PFX_PATH --cert-password $env:SIGN_PFX_PASSWORD
+            winapp sign $file.FullName $env:SIGN_PFX_PATH --password $env:SIGN_PFX_PASSWORD
             if ($LASTEXITCODE -ne 0) { Write-Error "Failed signing $($file.FullName)"; exit 1 }
           }
 
@@ -142,7 +142,7 @@ jobs:
           if (-not $files) { Write-Error "No .exe files found in arm64 publish output to sign"; exit 1 }
           foreach ($file in $files) {
             Write-Host "Signing $($file.FullName)"
-            winapp sign $file.FullName --cert $env:SIGN_PFX_PATH --cert-password $env:SIGN_PFX_PASSWORD
+            winapp sign $file.FullName $env:SIGN_PFX_PATH --password $env:SIGN_PFX_PASSWORD
             if ($LASTEXITCODE -ne 0) { Write-Error "Failed signing $($file.FullName)"; exit 1 }
           }
 
