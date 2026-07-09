@@ -166,50 +166,23 @@ jobs:
       # files are signed with `winapp sign`. Below we also produce signed MSIX
       # packages from those same publish outputs using `winapp pack`.
       #
-      # The checked-in MAUI Package.appxmanifest still contains unresolved MAUI
-      # `$placeholder$` tokens (DisplayName, Logo, Identity Name, tile/splash
-      # images). WinAppCLI only auto-resolves `$targetnametoken$` /
-      # `$targetentrypoint$`, so packing that manifest fails with
+      # The checked-in MAUI source Package.appxmanifest
+      # (LogViewer/Platforms/Windows/Package.appxmanifest) still contains
+      # unresolved MAUI `$placeholder$` tokens (DisplayName, Logo, Identity
+      # Name, tile/splash images). WinAppCLI only auto-resolves
+      # `$targetnametoken$` / `$targetentrypoint$`, so packing that source
+      # manifest fails with
       # "The manifest contains unresolved placeholders: $placeholder$".
-      # Instead we generate a fully-resolved packaging manifest (and image
-      # assets from the app SVG) at build time with `winapp manifest generate`
-      # and `winapp manifest update-assets`, then pack both architectures
-      # against it. The manifest is architecture-independent; `winapp pack`
-      # stamps ProcessorArchitecture from the input publish folder.
-
-      - name: Generate MSIX manifest and assets
-        shell: pwsh
-        run: |
-          $staging = Join-Path $env:RUNNER_TEMP 'msix-manifest'
-          New-Item -ItemType Directory -Force -Path $staging | Out-Null
-
-          # MSIX versions must be Major.Minor.Build.Revision (4 numeric parts).
-          $ver = '${{ steps.get_version.outputs.version-without-v }}'
-          if ([string]::IsNullOrWhiteSpace($ver)) { $ver = '1.0.0' }
-          $ver = ($ver -split '-')[0]              # drop any pre-release suffix
-          $parts = @($ver.Split('.') | Where-Object { $_ -match '^\d+$' })
-          while ($parts.Count -lt 4) { $parts += '0' }
-          $ver = ($parts[0..3] -join '.')
-          Write-Host "MSIX package version: $ver"
-
-          $manifest = Join-Path $staging 'Package.appxmanifest'
-
-          # Publisher MUST exactly match the signing certificate subject
-          # (CN=User Name) or signing the MSIX will fail.
-          winapp manifest generate $staging `
-            --package-name LogViewer `
-            --publisher-name "CN=User Name" `
-            --version $ver `
-            --description "LogViewer" `
-            --executable .\artifacts\publish\windows\LogViewer.exe `
-            --if-exists overwrite
-          if ($LASTEXITCODE -ne 0) { Write-Error "Failed to generate MSIX manifest"; exit 1 }
-
-          winapp manifest update-assets .\LogViewer\Resources\AppIcon\appicon.svg `
-            --manifest $manifest
-          if ($LASTEXITCODE -ne 0) { Write-Error "Failed to generate MSIX assets"; exit 1 }
-
-          "MSIX_MANIFEST=$manifest" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      #
+      # MAUI's resizetizer resolves those tokens at BUILD time and emits a
+      # fully-resolved manifest under
+      # obj/<Config>/<TFM>/<RID>/resizetizer/m/Package.appxmanifest. Each
+      # `dotnet publish ... -r <rid> ... WindowsPackageType=None` step above
+      # regenerates that RID's resolved manifest, so we simply point
+      # `winapp pack --manifest` at it (per RID). We must NOT edit the MAUI
+      # source manifest. Only `$targetnametoken$` / `$targetentrypoint$`
+      # remain in the resolved manifest, which `--executable LogViewer.exe`
+      # resolves.
 
       - name: Pack signed MSIX (x64)
         shell: pwsh
@@ -218,10 +191,17 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path .\artifacts\installers | Out-Null
           $target = '.\artifacts\installers\LogViewer-windows-win10-x64-signed.msix'
+          # Use the resizetizer-resolved manifest for the win-x64 RID, produced
+          # by the "Publish app" step above.
+          $manifest = ".\LogViewer\obj\$env:CONFIGURATION\$env:WINDOWS_TFM\win-x64\resizetizer\m\Package.appxmanifest"
+          if (-not (Test-Path $manifest)) {
+            Write-Error "Resolved MSIX manifest not found at $manifest. Ensure the win-x64 publish step ran before packing."
+            exit 1
+          }
           # The publish output contains multiple .exe files (LogViewer.exe and
           # RestartAgent.exe), so pin the app entrypoint with --executable.
           winapp pack .\artifacts\publish\windows `
-            --manifest $env:MSIX_MANIFEST `
+            --manifest $manifest `
             --executable LogViewer.exe `
             --cert $env:SIGN_PFX_PATH `
             --cert-password $env:SIGN_PFX_PASSWORD `
@@ -242,8 +222,15 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path .\artifacts\installers | Out-Null
           $target = '.\artifacts\installers\LogViewer-windows-win10-arm64-signed.msix'
+          # Use the resizetizer-resolved manifest for the win-arm64 RID,
+          # produced by the "Publish app (arm64)" step above.
+          $manifest = ".\LogViewer\obj\$env:CONFIGURATION\$env:WINDOWS_TFM\win-arm64\resizetizer\m\Package.appxmanifest"
+          if (-not (Test-Path $manifest)) {
+            Write-Error "Resolved MSIX manifest not found at $manifest. Ensure the win-arm64 publish step ran before packing."
+            exit 1
+          }
           winapp pack .\artifacts\publish\windows-arm64 `
-            --manifest $env:MSIX_MANIFEST `
+            --manifest $manifest `
             --executable LogViewer.exe `
             --cert $env:SIGN_PFX_PATH `
             --cert-password $env:SIGN_PFX_PASSWORD `
