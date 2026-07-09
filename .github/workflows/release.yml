@@ -165,6 +165,24 @@ jobs:
       # The unpackaged ZIPs above are self-contained loose builds whose .exe
       # files are signed with `winapp sign`. Below we also produce signed MSIX
       # packages from those same publish outputs using `winapp pack`.
+      #
+      # The checked-in MAUI source Package.appxmanifest
+      # (LogViewer/Platforms/Windows/Package.appxmanifest) still contains
+      # unresolved MAUI `$placeholder$` tokens (DisplayName, Logo, Identity
+      # Name, tile/splash images). WinAppCLI only auto-resolves
+      # `$targetnametoken$` / `$targetentrypoint$`, so packing that source
+      # manifest fails with
+      # "The manifest contains unresolved placeholders: $placeholder$".
+      #
+      # MAUI's resizetizer resolves those tokens at BUILD time and emits a
+      # fully-resolved manifest under
+      # obj/<Config>/<TFM>/<RID>/resizetizer/m/Package.appxmanifest. Each
+      # `dotnet publish ... -r <rid> ... WindowsPackageType=None` step above
+      # regenerates that RID's resolved manifest, so we simply point
+      # `winapp pack --manifest` at it (per RID). We must NOT edit the MAUI
+      # source manifest. Only `$targetnametoken$` / `$targetentrypoint$`
+      # remain in the resolved manifest, which `--executable LogViewer.exe`
+      # resolves.
 
       - name: Pack signed MSIX (x64)
         shell: pwsh
@@ -173,19 +191,23 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path .\artifacts\installers | Out-Null
           $target = '.\artifacts\installers\LogViewer-windows-win10-x64-signed.msix'
+          # Use the resizetizer-resolved manifest for the win-x64 RID, produced
+          # by the "Publish app" step above.
+          $manifest = ".\LogViewer\obj\$env:CONFIGURATION\$env:WINDOWS_TFM\win-x64\resizetizer\m\Package.appxmanifest"
+          if (-not (Test-Path $manifest)) {
+            Write-Error "Resolved MSIX manifest not found at $manifest. Ensure the win-x64 publish step ran before packing."
+            exit 1
+          }
           # The publish output contains multiple .exe files (LogViewer.exe and
           # RestartAgent.exe), so pin the app entrypoint with --executable.
           winapp pack .\artifacts\publish\windows `
-            --manifest .\LogViewer\Platforms\Windows\Package.appxmanifest `
+            --manifest $manifest `
             --executable LogViewer.exe `
             --cert $env:SIGN_PFX_PATH `
             --cert-password $env:SIGN_PFX_PASSWORD `
             --output $target
-          if (-not (Test-Path $target)) {
-            $msix = Get-ChildItem -Path .\artifacts\publish\windows, . -Filter *.msix -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-            if (-not $msix) { Write-Error "No signed .msix produced for x64"; exit 1 }
-            Copy-Item $msix.FullName $target -Force
-          }
+          if ($LASTEXITCODE -ne 0) { Write-Error "winapp pack failed for x64"; exit 1 }
+          if (-not (Test-Path $target)) { Write-Error "No signed .msix produced for x64"; exit 1 }
 
       - name: Upload signed MSIX artifact (x64)
         uses: actions/upload-artifact@v4
@@ -200,17 +222,21 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path .\artifacts\installers | Out-Null
           $target = '.\artifacts\installers\LogViewer-windows-win10-arm64-signed.msix'
+          # Use the resizetizer-resolved manifest for the win-arm64 RID,
+          # produced by the "Publish app (arm64)" step above.
+          $manifest = ".\LogViewer\obj\$env:CONFIGURATION\$env:WINDOWS_TFM\win-arm64\resizetizer\m\Package.appxmanifest"
+          if (-not (Test-Path $manifest)) {
+            Write-Error "Resolved MSIX manifest not found at $manifest. Ensure the win-arm64 publish step ran before packing."
+            exit 1
+          }
           winapp pack .\artifacts\publish\windows-arm64 `
-            --manifest .\LogViewer\Platforms\Windows\Package.appxmanifest `
+            --manifest $manifest `
             --executable LogViewer.exe `
             --cert $env:SIGN_PFX_PATH `
             --cert-password $env:SIGN_PFX_PASSWORD `
             --output $target
-          if (-not (Test-Path $target)) {
-            $msix = Get-ChildItem -Path .\artifacts\publish\windows-arm64, . -Filter *.msix -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-            if (-not $msix) { Write-Error "No signed .msix produced for arm64"; exit 1 }
-            Copy-Item $msix.FullName $target -Force
-          }
+          if ($LASTEXITCODE -ne 0) { Write-Error "winapp pack failed for arm64"; exit 1 }
+          if (-not (Test-Path $target)) { Write-Error "No signed .msix produced for arm64"; exit 1 }
 
       - name: Upload signed MSIX artifact (arm64)
         uses: actions/upload-artifact@v4

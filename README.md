@@ -56,8 +56,9 @@ Create a self-signed certificate locally on Windows (PowerShell), export it to a
 
 ```powershell
 # 1. Create a self-signed code-signing certificate in the current user store.
-#    The Subject CN must match the Publisher in
-#    LogViewer/Platforms/Windows/Package.appxmanifest.
+#    The Subject CN must match the Publisher in the MSIX manifest that MAUI's
+#    resizetizer generates at build time (CN=User Name, taken from the
+#    <ApplicationTitle>/publisher in LogViewer.csproj).
 $cert = New-SelfSignedCertificate `
   -Type CodeSigningCert `
   -Subject "CN=User Name" `
@@ -84,8 +85,13 @@ Actions):
 - `SIGN_PFX_PASSWORD` — the PFX password you chose above.
 
 The release workflow (`.github/workflows/release.yml`) restores the PFX from
-`SIGN_PFX_BASE64` into `RUNNER_TEMP`, signs unpackaged Windows `.exe` files via
-`winapp sign`, and signs the x64/arm64 MSIX packages via `winapp pack`. Do
+`SIGN_PFX_BASE64` into `RUNNER_TEMP` and signs unpackaged Windows `.exe` files
+via `winapp sign`. For the MSIX packages it points `winapp pack` at the
+fully-resolved manifest that MAUI's resizetizer emits during the build at
+`LogViewer/obj/<Config>/<TFM>/<RID>/resizetizer/m/Package.appxmanifest` — the
+checked-in MAUI `Package.appxmanifest` still contains unresolved `$placeholder$`
+tokens that `winapp pack` cannot resolve, whereas the generated one has them
+filled in. The x64/arm64 MSIX packages are then signed via `winapp pack`. Do
 **not** commit the `.pfx` or `.b64` files.
 
 > **SmartScreen note:** A self-signed certificate is trusted only where its
