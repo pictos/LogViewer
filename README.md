@@ -43,6 +43,57 @@ Installers/packages will be published on the GitHub Releases page:
 
 https://github.com/pictos/LogViewer/releases
 
+### Windows MSIX signing (maintainers)
+
+Windows releases ship as **signed MSIX** packages produced in CI with the
+[Windows App Development CLI](https://github.com/microsoft/WinAppCli). Signing
+uses a certificate supplied through GitHub Actions secrets. A free, self-signed
+certificate works for sideloading; you only need a paid CA certificate if you
+want to avoid the trust prompt for end users.
+
+Create a self-signed certificate locally on Windows (PowerShell), export it to a
+`.pfx`, base64-encode it, and store it as repository secrets:
+
+```powershell
+# 1. Create a self-signed code-signing certificate in the current user store.
+#    The Subject CN must match the Publisher in
+#    LogViewer/Platforms/Windows/Package.appxmanifest.
+$cert = New-SelfSignedCertificate `
+  -Type CodeSigningCert `
+  -Subject "CN=User Name" `
+  -CertStoreLocation "Cert:\CurrentUser\My" `
+  -KeyUsage DigitalSignature `
+  -KeyExportPolicy Exportable
+
+# 2. Export it to a password-protected PFX.
+$password = Read-Host -AsSecureString "PFX password"
+Export-PfxCertificate `
+  -Cert "Cert:\CurrentUser\My\$($cert.Thumbprint)" `
+  -FilePath ".\LogViewer-sign.pfx" `
+  -Password $password
+
+# 3. Base64-encode the PFX for storage as a GitHub secret.
+[Convert]::ToBase64String([IO.File]::ReadAllBytes(".\LogViewer-sign.pfx")) |
+  Set-Content -NoNewline ".\LogViewer-sign.pfx.b64"
+```
+
+Then add the following **repository secrets** (Settings → Secrets and variables →
+Actions):
+
+- `SIGN_PFX_BASE64` — the contents of `LogViewer-sign.pfx.b64` (the base64 blob).
+- `SIGN_PFX_PASSWORD` — the PFX password you chose above.
+
+The release workflow (`.github/workflows/release.yml`) restores the PFX from
+`SIGN_PFX_BASE64` into `RUNNER_TEMP`, signs unpackaged Windows `.exe` files via
+`winapp sign`, and signs the x64/arm64 MSIX packages via `winapp pack`. Do
+**not** commit the `.pfx` or `.b64` files.
+
+> **SmartScreen note:** A self-signed certificate is trusted only where its
+> public certificate is installed. Users installing the MSIX elsewhere may see a
+> Microsoft Defender SmartScreen warning until the signing certificate builds up
+> reputation (or you switch to a certificate from a recognized CA). This does not
+> affect the unpackaged ZIP builds.
+
 
 ## How to use the app
 
