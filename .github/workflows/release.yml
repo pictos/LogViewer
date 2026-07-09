@@ -65,6 +65,8 @@ jobs:
             -c $env:CONFIGURATION `
             -f $env:WINDOWS_TFM `
             -r win-x64 `
+            -p:SelfContained=true `
+            -p:WindowsAppSDKSelfContained=true `
             -p:WindowsPackageType=None `
             --output .\artifacts\publish\windows
 
@@ -90,6 +92,8 @@ jobs:
             -c $env:CONFIGURATION `
             -f $env:WINDOWS_TFM `
             -r win-arm64 `
+            -p:SelfContained=true `
+            -p:WindowsAppSDKSelfContained=true `
             -p:WindowsPackageType=None `
             --output .\artifacts\publish\windows-arm64
 
