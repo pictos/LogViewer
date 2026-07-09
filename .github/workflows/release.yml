@@ -165,6 +165,51 @@ jobs:
       # The unpackaged ZIPs above are self-contained loose builds whose .exe
       # files are signed with `winapp sign`. Below we also produce signed MSIX
       # packages from those same publish outputs using `winapp pack`.
+      #
+      # The checked-in MAUI Package.appxmanifest still contains unresolved MAUI
+      # `$placeholder$` tokens (DisplayName, Logo, Identity Name, tile/splash
+      # images). WinAppCLI only auto-resolves `$targetnametoken$` /
+      # `$targetentrypoint$`, so packing that manifest fails with
+      # "The manifest contains unresolved placeholders: $placeholder$".
+      # Instead we generate a fully-resolved packaging manifest (and image
+      # assets from the app SVG) at build time with `winapp manifest generate`
+      # and `winapp manifest update-assets`, then pack both architectures
+      # against it. The manifest is architecture-independent; `winapp pack`
+      # stamps ProcessorArchitecture from the input publish folder.
+
+      - name: Generate MSIX manifest and assets
+        shell: pwsh
+        run: |
+          $staging = Join-Path $env:RUNNER_TEMP 'msix-manifest'
+          New-Item -ItemType Directory -Force -Path $staging | Out-Null
+
+          # MSIX versions must be Major.Minor.Build.Revision (4 numeric parts).
+          $ver = '${{ steps.get_version.outputs.version-without-v }}'
+          if ([string]::IsNullOrWhiteSpace($ver)) { $ver = '1.0.0' }
+          $ver = ($ver -split '-')[0]              # drop any pre-release suffix
+          $parts = @($ver.Split('.') | Where-Object { $_ -match '^\d+$' })
+          while ($parts.Count -lt 4) { $parts += '0' }
+          $ver = ($parts[0..3] -join '.')
+          Write-Host "MSIX package version: $ver"
+
+          $manifest = Join-Path $staging 'Package.appxmanifest'
+
+          # Publisher MUST exactly match the signing certificate subject
+          # (CN=User Name) or signing the MSIX will fail.
+          winapp manifest generate $staging `
+            --package-name LogViewer `
+            --publisher-name "CN=User Name" `
+            --version $ver `
+            --description "LogViewer" `
+            --executable .\artifacts\publish\windows\LogViewer.exe `
+            --if-exists overwrite
+          if ($LASTEXITCODE -ne 0) { Write-Error "Failed to generate MSIX manifest"; exit 1 }
+
+          winapp manifest update-assets .\LogViewer\Resources\AppIcon\appicon.svg `
+            --manifest $manifest
+          if ($LASTEXITCODE -ne 0) { Write-Error "Failed to generate MSIX assets"; exit 1 }
+
+          "MSIX_MANIFEST=$manifest" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Pack signed MSIX (x64)
         shell: pwsh
@@ -176,16 +221,13 @@ jobs:
           # The publish output contains multiple .exe files (LogViewer.exe and
           # RestartAgent.exe), so pin the app entrypoint with --executable.
           winapp pack .\artifacts\publish\windows `
-            --manifest .\LogViewer\Platforms\Windows\Package.appxmanifest `
+            --manifest $env:MSIX_MANIFEST `
             --executable LogViewer.exe `
             --cert $env:SIGN_PFX_PATH `
             --cert-password $env:SIGN_PFX_PASSWORD `
             --output $target
-          if (-not (Test-Path $target)) {
-            $msix = Get-ChildItem -Path .\artifacts\publish\windows, . -Filter *.msix -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-            if (-not $msix) { Write-Error "No signed .msix produced for x64"; exit 1 }
-            Copy-Item $msix.FullName $target -Force
-          }
+          if ($LASTEXITCODE -ne 0) { Write-Error "winapp pack failed for x64"; exit 1 }
+          if (-not (Test-Path $target)) { Write-Error "No signed .msix produced for x64"; exit 1 }
 
       - name: Upload signed MSIX artifact (x64)
         uses: actions/upload-artifact@v4
@@ -201,16 +243,13 @@ jobs:
           New-Item -ItemType Directory -Force -Path .\artifacts\installers | Out-Null
           $target = '.\artifacts\installers\LogViewer-windows-win10-arm64-signed.msix'
           winapp pack .\artifacts\publish\windows-arm64 `
-            --manifest .\LogViewer\Platforms\Windows\Package.appxmanifest `
+            --manifest $env:MSIX_MANIFEST `
             --executable LogViewer.exe `
             --cert $env:SIGN_PFX_PATH `
             --cert-password $env:SIGN_PFX_PASSWORD `
             --output $target
-          if (-not (Test-Path $target)) {
-            $msix = Get-ChildItem -Path .\artifacts\publish\windows-arm64, . -Filter *.msix -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-            if (-not $msix) { Write-Error "No signed .msix produced for arm64"; exit 1 }
-            Copy-Item $msix.FullName $target -Force
-          }
+          if ($LASTEXITCODE -ne 0) { Write-Error "winapp pack failed for arm64"; exit 1 }
+          if (-not (Test-Path $target)) { Write-Error "No signed .msix produced for arm64"; exit 1 }
 
       - name: Upload signed MSIX artifact (arm64)
         uses: actions/upload-artifact@v4

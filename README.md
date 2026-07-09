@@ -56,8 +56,9 @@ Create a self-signed certificate locally on Windows (PowerShell), export it to a
 
 ```powershell
 # 1. Create a self-signed code-signing certificate in the current user store.
-#    The Subject CN must match the Publisher in
-#    LogViewer/Platforms/Windows/Package.appxmanifest.
+#    The Subject CN must match the Publisher used when packing the MSIX
+#    (CN=User Name, set in the "Generate MSIX manifest and assets" step of
+#    .github/workflows/release.yml).
 $cert = New-SelfSignedCertificate `
   -Type CodeSigningCert `
   -Subject "CN=User Name" `
@@ -84,9 +85,13 @@ Actions):
 - `SIGN_PFX_PASSWORD` — the PFX password you chose above.
 
 The release workflow (`.github/workflows/release.yml`) restores the PFX from
-`SIGN_PFX_BASE64` into `RUNNER_TEMP`, signs unpackaged Windows `.exe` files via
-`winapp sign`, and signs the x64/arm64 MSIX packages via `winapp pack`. Do
-**not** commit the `.pfx` or `.b64` files.
+`SIGN_PFX_BASE64` into `RUNNER_TEMP` and signs unpackaged Windows `.exe` files
+via `winapp sign`. For the MSIX packages it first generates a fully-resolved
+packaging manifest and image assets from `LogViewer/Resources/AppIcon/appicon.svg`
+with `winapp manifest generate` / `winapp manifest update-assets` (the checked-in
+MAUI `Package.appxmanifest` still contains unresolved `$placeholder$` tokens that
+`winapp pack` cannot resolve), then signs the x64/arm64 MSIX packages via
+`winapp pack`. Do **not** commit the `.pfx` or `.b64` files.
 
 > **SmartScreen note:** A self-signed certificate is trusted only where its
 > public certificate is installed. Users installing the MSIX elsewhere may see a
