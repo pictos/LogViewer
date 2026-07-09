@@ -58,6 +58,29 @@ jobs:
         shell: pwsh
         run: dotnet restore $env:APP_PROJECT
 
+      - name: Setup Windows App CLI
+        uses: microsoft/setup-WinAppCli@v0.1
+
+      - name: Validate signing secrets and restore PFX
+        shell: pwsh
+        env:
+          SIGN_PFX_BASE64: ${{ secrets.SIGN_PFX_BASE64 }}
+          SIGN_PFX_PASSWORD: ${{ secrets.SIGN_PFX_PASSWORD }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:SIGN_PFX_BASE64)) {
+            Write-Error "SIGN_PFX_BASE64 secret is not set. Add it under repository/organization secrets (see README)."
+            exit 1
+          }
+          if ([string]::IsNullOrWhiteSpace($env:SIGN_PFX_PASSWORD)) {
+            Write-Error "SIGN_PFX_PASSWORD secret is not set. Add it under repository/organization secrets (see README)."
+            exit 1
+          }
+          $pfxPath = Join-Path $env:RUNNER_TEMP 'sign.pfx'
+          $bytes = [System.Convert]::FromBase64String($env:SIGN_PFX_BASE64)
+          [System.IO.File]::WriteAllBytes($pfxPath, $bytes)
+          "SIGN_PFX_PATH=$pfxPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host "Restored signing PFX to $pfxPath ($($bytes.Length) bytes)"
+
       - name: Publish app
         shell: pwsh
         run: |
@@ -69,6 +92,19 @@ jobs:
             -p:WindowsAppSDKSelfContained=true `
             -p:WindowsPackageType=None `
             --output .\artifacts\publish\windows
+
+      - name: Sign unpackaged binaries (x64)
+        shell: pwsh
+        env:
+          SIGN_PFX_PASSWORD: ${{ secrets.SIGN_PFX_PASSWORD }}
+        run: |
+          $files = Get-ChildItem -Path .\artifacts\publish\windows -Recurse -File | Where-Object { $_.Extension -ieq '.exe' }
+          if (-not $files) { Write-Error "No .exe files found in x64 publish output to sign"; exit 1 }
+          foreach ($file in $files) {
+            Write-Host "Signing $($file.FullName)"
+            winapp sign $file.FullName --cert $env:SIGN_PFX_PATH --cert-password $env:SIGN_PFX_PASSWORD
+            if ($LASTEXITCODE -ne 0) { Write-Error "Failed signing $($file.FullName)"; exit 1 }
+          }
 
       - name: Create unpackaged installer archive
         shell: pwsh
@@ -97,6 +133,19 @@ jobs:
             -p:WindowsPackageType=None `
             --output .\artifacts\publish\windows-arm64
 
+      - name: Sign unpackaged binaries (arm64)
+        shell: pwsh
+        env:
+          SIGN_PFX_PASSWORD: ${{ secrets.SIGN_PFX_PASSWORD }}
+        run: |
+          $files = Get-ChildItem -Path .\artifacts\publish\windows-arm64 -Recurse -File | Where-Object { $_.Extension -ieq '.exe' }
+          if (-not $files) { Write-Error "No .exe files found in arm64 publish output to sign"; exit 1 }
+          foreach ($file in $files) {
+            Write-Host "Signing $($file.FullName)"
+            winapp sign $file.FullName --cert $env:SIGN_PFX_PATH --cert-password $env:SIGN_PFX_PASSWORD
+            if ($LASTEXITCODE -ne 0) { Write-Error "Failed signing $($file.FullName)"; exit 1 }
+          }
+
       - name: Create unpackaged installer archive (arm64)
         shell: pwsh
         run: |
@@ -113,31 +162,9 @@ jobs:
           path: .\artifacts\installers\LogViewer-windows-win10-arm64-unpackaged.zip
 
       # --- Signed MSIX packaging via the Windows App Development CLI ---
-      # The unpackaged ZIPs above are self-contained loose builds. Below we
-      # produce signed MSIX packages from those same publish outputs using
-      # `winapp pack`, signing with a PFX supplied through GitHub secrets.
-      - name: Setup Windows App CLI
-        uses: microsoft/setup-WinAppCli@v0.1
-
-      - name: Validate signing secrets and restore PFX
-        shell: pwsh
-        env:
-          SIGN_PFX_BASE64: ${{ secrets.SIGN_PFX_BASE64 }}
-          SIGN_PFX_PASSWORD: ${{ secrets.SIGN_PFX_PASSWORD }}
-        run: |
-          if ([string]::IsNullOrWhiteSpace($env:SIGN_PFX_BASE64)) {
-            Write-Error "SIGN_PFX_BASE64 secret is not set. Add it under repository/organization secrets (see README)."
-            exit 1
-          }
-          if ([string]::IsNullOrWhiteSpace($env:SIGN_PFX_PASSWORD)) {
-            Write-Error "SIGN_PFX_PASSWORD secret is not set. Add it under repository/organization secrets (see README)."
-            exit 1
-          }
-          $pfxPath = Join-Path $env:RUNNER_TEMP 'sign.pfx'
-          $bytes = [System.Convert]::FromBase64String($env:SIGN_PFX_BASE64)
-          [System.IO.File]::WriteAllBytes($pfxPath, $bytes)
-          "SIGN_PFX_PATH=$pfxPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          Write-Host "Restored signing PFX to $pfxPath ($($bytes.Length) bytes)"
+      # The unpackaged ZIPs above are self-contained loose builds whose .exe
+      # files are signed with `winapp sign`. Below we also produce signed MSIX
+      # packages from those same publish outputs using `winapp pack`.
 
       - name: Pack signed MSIX (x64)
         shell: pwsh

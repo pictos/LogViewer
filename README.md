@@ -84,8 +84,9 @@ Actions):
 - `SIGN_PFX_PASSWORD` — the PFX password you chose above.
 
 The release workflow (`.github/workflows/release.yml`) restores the PFX from
-`SIGN_PFX_BASE64` into `RUNNER_TEMP`, then signs the x64 and arm64 MSIX packages
-via `winapp pack`. Do **not** commit the `.pfx` or `.b64` files.
+`SIGN_PFX_BASE64` into `RUNNER_TEMP`, signs unpackaged Windows `.exe` files via
+`winapp sign`, and signs the x64/arm64 MSIX packages via `winapp pack`. Do
+**not** commit the `.pfx` or `.b64` files.
 
 > **SmartScreen note:** A self-signed certificate is trusted only where its
 > public certificate is installed. Users installing the MSIX elsewhere may see a
